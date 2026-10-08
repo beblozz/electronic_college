@@ -1,0 +1,511 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum StudentStatus {
+  ACTIVE
+  EXPELLED
+  GRADUATED
+}
+
+enum TeacherStatus {
+  ACTIVE
+  SICK
+  VACATION
+  FIRED
+}
+
+enum WeekType {
+  ODD
+  EVEN
+  BOTH
+}
+
+enum AbsenceReason {
+  SICK
+  VACATION
+  OTHER
+}
+
+enum SubstitutionKind {
+  SAME_SUBJECT
+  OTHER_SUBJECT
+  COMBINED
+}
+
+enum GradeKind {
+  ANSWER
+  SURVEY
+  PRACTICAL
+  LECTURE
+  TEST
+}
+
+enum PlanItemKind {
+  LECTURE
+  PRACTICAL
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum ChatType {
+  GROUP
+  SUBJECT
+  PRIVATE
+}
+
+enum NotificationType {
+  SUBSTITUTION_CREATED
+  GRADE_CREATED
+  ANNOUNCEMENT_CREATED
+  ABSENCE_REPORTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  googleId     String?  @unique
+  passwordHash String?
+  role         Role
+  firstName    String
+  lastName     String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+
+  student              Student?
+  teacher              Teacher?
+  createdSubstitutions Substitution[]
+  chatMemberships      ChatMember[]
+  messages             Message[]
+  notifications        Notification[]
+  announcements        Announcement[]
+  pushSubscriptions    PushSubscription[]
+  calendarFeed         CalendarFeed?
+  knowledgeDocuments   KnowledgeDocument[]
+
+  @@index([role])
+  @@index([lastName, firstName])
+}
+
+model Student {
+  id             String        @id @default(cuid())
+  userId         String        @unique
+  groupId        String
+  enrollmentYear Int
+  status         StudentStatus @default(ACTIVE)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group       Group        @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  grades      Grade[]
+  attendances Attendance[]
+
+  @@index([groupId, status])
+}
+
+model Teacher {
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  departmentId    String
+  status          TeacherStatus @default(ACTIVE)
+  maxHoursPerWeek Int           @default(36)
+
+  user                    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department              Department       @relation("DepartmentTeachers", fields: [departmentId], references: [id], onDelete: Restrict)
+  headedDepartment        Department?      @relation("DepartmentHead")
+  curatedGroups           Group[]
+  teacherSubjects         TeacherSubject[]
+  curricula               Curriculum[]
+  scheduleSlots           ScheduleSlot[]
+  originalSubstitutions   Substitution[]   @relation("SubstitutionOriginalTeacher")
+  substituteSubstitutions Substitution[]   @relation("SubstitutionSubstituteTeacher")
+  grades                  Grade[]
+  markedAttendances       Attendance[]
+  absences                TeacherAbsence[]
+
+  @@index([departmentId])
+  @@index([status])
+}
+
+model TeacherAbsence {
+  id        String        @id @default(cuid())
+  teacherId String
+  reason    AbsenceReason
+  startDate DateTime      @db.Date
+  endDate   DateTime      @db.Date
+  createdAt DateTime      @default(now())
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, startDate, endDate])
+}
+
+model Department {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  headTeacherId String? @unique
+
+  headTeacher Teacher?    @relation("DepartmentHead", fields: [headTeacherId], references: [id], onDelete: SetNull)
+  teachers    Teacher[]   @relation("DepartmentTeachers")
+  specialties Specialty[]
+}
+
+model Specialty {
+  id           String @id @default(cuid())
+  code         String @unique
+  name         String
+  departmentId String
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  subjects   Subject[]
+  groups     Group[]
+
+  @@index([departmentId])
+}
+
+model Subject {
+  id            String @id @default(cuid())
+  name          String
+  code          String @unique
+  specialtyId   String
+  hoursTotal    Int
+  hoursLecture  Int
+  hoursPractice Int
+
+  specialty       Specialty        @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+  teacherSubjects TeacherSubject[]
+  curricula       Curriculum[]
+  scheduleSlots   ScheduleSlot[]
+  grades          Grade[]
+  chats           Chat[]
+  substitutions   Substitution[]
+  studyPlans      StudyPlan[]
+
+  @@index([specialtyId])
+}
+
+model Group {
+  id               String  @id @default(cuid())
+  name             String  @unique
+  specialtyId      String
+  courseYear       Int
+  curatorTeacherId String?
+
+  specialty      Specialty      @relation(fields: [specialtyId], references: [id], onDelete: Restrict)
+  curatorTeacher Teacher?       @relation(fields: [curatorTeacherId], references: [id], onDelete: SetNull)
+  students       Student[]
+  curricula      Curriculum[]
+  scheduleSlots  ScheduleSlot[]
+  chats          Chat[]
+  announcements  Announcement[]
+  studyPlans     StudyPlan[]
+
+  @@index([specialtyId, courseYear])
+  @@index([curatorTeacherId])
+}
+
+model Term {
+  id        String   @id @default(cuid())
+  name      String
+  half      Int      @db.SmallInt
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+
+  @@index([startDate, endDate])
+}
+
+model TeacherSubject {
+  id        String @id @default(cuid())
+  teacherId String
+  subjectId String
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, subjectId])
+  @@index([subjectId])
+}
+
+model Curriculum {
+  id        String @id @default(cuid())
+  groupId   String
+  subjectId String
+  teacherId String
+  semester  Int
+
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+
+  @@unique([groupId, subjectId, semester])
+  @@index([teacherId, semester])
+}
+
+model Room {
+  id       String @id @default(cuid())
+  number   String
+  capacity Int
+  building String
+
+  scheduleSlots ScheduleSlot[]
+  substitutions Substitution[]
+
+  @@unique([building, number])
+}
+
+model ScheduleSlot {
+  id         String   @id @default(cuid())
+  groupId    String
+  subjectId  String
+  teacherId  String
+  roomId     String
+  dayOfWeek  Int      @db.SmallInt
+  pairNumber Int      @db.SmallInt
+  startTime  String   @db.VarChar(5)
+  endTime    String   @db.VarChar(5)
+  weekType   WeekType @default(BOTH)
+  semester   Int      @db.SmallInt
+
+  group                 Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject               Subject        @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacher               Teacher        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  room                  Room           @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  substitutions         Substitution[] @relation("SubstitutionSlot")
+  combinedSubstitutions Substitution[] @relation("SubstitutionCombinedSlot")
+  attendances           Attendance[]
+
+  @@index([groupId, dayOfWeek, pairNumber])
+  @@index([teacherId, dayOfWeek, pairNumber])
+  @@index([roomId, dayOfWeek, pairNumber])
+  @@index([semester])
+}
+
+model Substitution {
+  id                  String           @id @default(cuid())
+  scheduleSlotId      String
+  date                DateTime         @db.Date
+  originalTeacherId   String
+  substituteTeacherId String
+  reason              AbsenceReason
+  kind                SubstitutionKind @default(SAME_SUBJECT)
+  subjectId           String?
+  roomId              String?
+  combinedWithSlotId  String?
+  createdByAdminId    String
+  createdAt           DateTime         @default(now())
+
+  scheduleSlot      ScheduleSlot  @relation("SubstitutionSlot", fields: [scheduleSlotId], references: [id], onDelete: Cascade)
+  subject           Subject?      @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  room              Room?         @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  combinedWithSlot  ScheduleSlot? @relation("SubstitutionCombinedSlot", fields: [combinedWithSlotId], references: [id], onDelete: SetNull)
+  originalTeacher   Teacher       @relation("SubstitutionOriginalTeacher", fields: [originalTeacherId], references: [id], onDelete: Restrict)
+  substituteTeacher Teacher       @relation("SubstitutionSubstituteTeacher", fields: [substituteTeacherId], references: [id], onDelete: Restrict)
+  createdByAdmin    User          @relation(fields: [createdByAdminId], references: [id], onDelete: Restrict)
+
+  @@unique([date, scheduleSlotId])
+  @@index([substituteTeacherId, date])
+  @@index([originalTeacherId, date])
+}
+
+model Grade {
+  id         String    @id @default(cuid())
+  studentId  String
+  subjectId  String
+  teacherId  String
+  value      Int       @db.SmallInt
+  date       DateTime  @db.Date
+  comment    String?
+  kind       GradeKind @default(ANSWER)
+  planItemId String?
+
+  student  Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject  Subject        @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacher  Teacher        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  planItem StudyPlanItem? @relation(fields: [planItemId], references: [id], onDelete: SetNull)
+
+  @@index([studentId, subjectId])
+  @@index([subjectId, date])
+  @@index([teacherId])
+  @@index([planItemId])
+}
+
+model Attendance {
+  id                String           @id @default(cuid())
+  studentId         String
+  scheduleSlotId    String
+  date              DateTime         @db.Date
+  status            AttendanceStatus
+  markedByTeacherId String
+
+  student         Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  scheduleSlot    ScheduleSlot @relation(fields: [scheduleSlotId], references: [id], onDelete: Cascade)
+  markedByTeacher Teacher      @relation(fields: [markedByTeacherId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, scheduleSlotId, date])
+  @@index([scheduleSlotId, date])
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  type      ChatType
+  groupId   String?
+  subjectId String?
+  createdAt DateTime @default(now())
+
+  group    Group?       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject  Subject?     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  members  ChatMember[]
+  messages Message[]
+
+  @@index([type, groupId, subjectId])
+}
+
+model ChatMember {
+  id         String    @id @default(cuid())
+  chatId     String
+  userId     String
+  lastReadAt DateTime?
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  chatId    String
+  senderId  String
+  content   String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+  @@index([senderId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+model Announcement {
+  id            String   @id @default(cuid())
+  authorId      String
+  title         String
+  body          String
+  targetRole    Role?
+  targetGroupId String?
+  createdAt     DateTime @default(now())
+
+  author      User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  targetGroup Group? @relation(fields: [targetGroupId], references: [id], onDelete: Cascade)
+
+  @@index([targetGroupId, createdAt])
+  @@index([targetRole, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CalendarFeed {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  token              String   @unique
+  googleRefreshToken String?
+  googleCalendarId   String?
+  createdAt          DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeDocument {
+  id           String   @id @default(cuid())
+  title        String
+  fileName     String
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  uploadedBy User             @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  chunks     KnowledgeChunk[]
+}
+
+model KnowledgeChunk {
+  id         String  @id @default(cuid())
+  documentId String
+  chunkIndex Int
+  content    String
+  embedding  Float[]
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+}
+
+model StudyPlan {
+  id                  String @id @default(cuid())
+  groupId             String
+  subjectId           String
+  semester            Int    @db.SmallInt
+  admissionThreshold  Int?   @db.SmallInt
+  autoCreditThreshold Int?   @db.SmallInt
+
+  group   Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subject Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  items   StudyPlanItem[]
+
+  @@unique([groupId, subjectId, semester])
+}
+
+model StudyPlanItem {
+  id          String       @id @default(cuid())
+  planId      String
+  kind        PlanItemKind
+  title       String
+  position    Int          @db.SmallInt
+  plannedDate DateTime?    @db.Date
+
+  plan   StudyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  grades Grade[]
+
+  @@index([planId, position])
+}

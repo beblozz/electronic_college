@@ -1,0 +1,6 @@
+node_modules
+private
+.next
+.env
+next-env.d.ts
+tsconfig.tsbuildinfo
