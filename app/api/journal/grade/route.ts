@@ -3,12 +3,14 @@ import { formatDate, formatDisplayDate, parseDate } from '@/lib/dates'
 import { created, notFound, parseBody, route } from '@/lib/http'
 import { resolveGradingTeacherId } from '@/lib/journal/grade-access'
 import { gradeInclude, serializeGrade } from '@/lib/journal/journal-service'
-import { assertPlanItem } from '@/lib/journal/plan-item'
+import { resolvePlanItem } from '@/lib/journal/plan-item'
 import { notifyUsers } from '@/lib/notifications/notify'
 import { teacherRef } from '@/lib/people'
 import { prisma } from '@/lib/prisma'
 import { emitToRooms, userRoom } from '@/lib/socket'
 import { dateSchema, idSchema } from '@/lib/validation/common'
+
+const gradeKindForPlanItem = { LECTURE: 'LECTURE', PRACTICAL: 'PRACTICAL' } as const
 
 const bodySchema = z.object({
   studentId: idSchema,
@@ -16,7 +18,7 @@ const bodySchema = z.object({
   value: z.number().int().min(2).max(5),
   date: dateSchema,
   comment: z.string().trim().max(500).optional(),
-  kind: z.enum(['ANSWER', 'SURVEY', 'PRACTICAL', 'LECTURE', 'TEST']).default('ANSWER'),
+  kind: z.enum(['ANSWER', 'SURVEY', 'PRACTICAL', 'LECTURE', 'TEST']).optional(),
   planItemId: idSchema.nullish(),
 })
 
@@ -28,7 +30,8 @@ export const POST = route(async (request) => {
   }
   const date = parseDate(body.date)
   const teacherId = await resolveGradingTeacherId(student.groupId, body.subjectId, date)
-  const planItemId = await assertPlanItem(body.planItemId ?? null, student.groupId, body.subjectId)
+  const planItem = await resolvePlanItem(body.planItemId, student.groupId, body.subjectId, date)
+  const kind = body.kind ?? (planItem ? gradeKindForPlanItem[planItem.kind] : 'ANSWER')
 
   const grade = await prisma.grade.create({
     data: {
@@ -38,8 +41,8 @@ export const POST = route(async (request) => {
       value: body.value,
       date,
       comment: body.comment || null,
-      kind: body.kind,
-      planItemId,
+      kind,
+      planItemId: planItem?.id ?? null,
     },
     include: { subject: true, ...gradeInclude },
   })

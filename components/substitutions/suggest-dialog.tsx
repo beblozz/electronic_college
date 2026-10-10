@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { balanceTone, formatPairBalance } from '@/components/hours/hours-format'
 import { reasonLabels, reasons } from '@/components/substitutions/reason-labels'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,10 @@ const emptyTexts: Record<Mode, string> = {
   same: 'Свободных преподавателей по этому предмету нет. Посмотрите вкладки «Другой предмет» и «Совмещение с группой»',
   other: 'Нет свободных преподавателей, которые ведут у этой группы другие предметы',
   combined: 'В это время нет подходящих пар у других групп',
+}
+
+function balanceOf(candidate: object): number {
+  return 'subjectBalancePairs' in candidate ? Number(candidate.subjectBalancePairs ?? 0) : 0
 }
 
 function firstModeWithOptions(suggestions: SubstitutionSuggestions): Mode {
@@ -133,6 +138,16 @@ export function SuggestDialog({ lesson, defaultReason, onClose, onAssigned }: Su
             ))}
           </div>
 
+          {mode !== 'same' && counts[mode] > 0 ? (
+            <p className="mb-2 text-caption text-muted">
+              Пара по «{lesson.subject.name}» не будет проведена: у предмета появится долг
+              {suggestions.slotSubjectBalancePairs !== null && suggestions.slotSubjectBalancePairs !== 0
+                ? ` (сейчас ${formatPairBalance(suggestions.slotSubjectBalancePairs)})`
+                : ''}
+              , а проведённый предмет получит лишнюю пару. Первыми показаны предметы, которые отстают от сетки: так замена
+              поможет им догнать программу. Расхождения видны в разделе «Вычитка часов».
+            </p>
+          ) : null}
           {counts[mode] === 0 ? <EmptyState>{emptyTexts[mode]}</EmptyState> : null}
 
           {mode !== 'combined' && loadCandidates.length > 0 ? (
@@ -155,7 +170,14 @@ export function SuggestDialog({ lesson, defaultReason, onClose, onAssigned }: Su
                         <p className="font-medium">{candidate.fullName}</p>
                         <p className="text-caption text-muted">{candidate.reason}</p>
                       </Td>
-                      {subject ? <Td>{subject.name}</Td> : null}
+                      {subject ? (
+                        <Td>
+                          <p>{subject.name}</p>
+                          <p className={`text-caption tabular-nums ${balanceTone(balanceOf(candidate))}`}>
+                            вычитка: {formatPairBalance(balanceOf(candidate))}
+                          </p>
+                        </Td>
+                      ) : null}
                       <Td className="text-right tabular-nums">{candidate.currentLoadToday}</Td>
                       <Td className="text-right tabular-nums">
                         {candidate.weeklyLoad} из {candidate.maxHoursPerWeek}

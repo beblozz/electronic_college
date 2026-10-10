@@ -124,6 +124,7 @@ type ConflictDetails = {
 | Метод и путь | Назначение | Вход | Выход | Роль |
 | --- | --- | --- | --- | --- |
 | PUT /api/journal/plan | Сохранить КТП текущего семестра целиком | `{ groupId, subjectId, admissionThreshold: number \| null, autoCreditThreshold: number \| null, items: Array<{ id?, kind, title, plannedDate: string \| null }> }` | 200 `{ plan }` | TEACHER (ведёт предмет у группы), ADMIN |
+| GET /api/journal/plan/dates | Даты пар предмета у группы в текущем семестре, для расстановки сроков КТП | query `groupId`, `subjectId` | 200 `{ dates: string[] }` | TEACHER (видит журнал), ADMIN |
 
 ## Schedule
 
@@ -201,7 +202,7 @@ type ConflictDetails = {
 | students | `{ email, firstName, lastName, groupId, enrollmentYear, status? }` — создаёт `User` с ролью STUDENT и `Student` | `groupId?`, `status?` |
 | departments | `{ name, headTeacherId? }` | — |
 | rooms | `{ number, building, capacity }` | `building?` |
-| curricula | `{ groupId, subjectId, teacherId, semester }` | `groupId?`, `teacherId?`, `semester?` |
+| curricula | `{ groupId, subjectId, teacherId, semester, plannedHours?: number \| null }` | `groupId?`, `teacherId?`, `semester?` |
 | terms | `{ name, half: 1 \| 2, startDate, endDate }`, периоды не пересекаются | — |
 
 | Метод и путь | Назначение | Вход | Выход |
@@ -216,6 +217,27 @@ type ConflictDetails = {
 | POST /api/admin/documents | Загрузить документ в базу знаний бота (pdf, docx, txt, md до 10 МБ) | multipart `file`, `title` | 201 `{ document: { id, title, fileName, chunkCount, createdAt } }` |
 | GET /api/admin/documents | Список документов | — | 200 `{ items: Array<{ id, title, fileName, chunkCount, createdAt }> }` |
 | DELETE /api/admin/documents/:id | Удалить документ с чанками | — | 204 |
+
+### Оценка по КТП (версия 1.3)
+
+В `POST /api/journal/grade` поле `kind` необязательно. Если `planItemId` не передан, сервер ищет работу КТП группы по предмету с `plannedDate`, равной дате оценки, и привязывает оценку к ней; `kind` при этом берётся из работы (`LECTURE` или `PRACTICAL`). `planItemId: null` — не привязывать. Без работы на эту дату и без `kind` оценка получает `ANSWER`.
+
+### Вычитка часов (версия 1.3)
+
+| Метод и путь | Назначение | Вход | Выход | Роль |
+| --- | --- | --- | --- | --- |
+| GET /api/admin/hours | Вычитка по группам, предметам и преподавателям | query `termId?` (по умолчанию текущий семестр), `groupId?` | 200 `ProgramHoursReport` | ADMIN |
+| GET /api/teachers/me/hours | Вычитка преподавателя за текущий семестр | — | 200 `ProgramHoursReport` только по его предметам | TEACHER |
+
+`ProgramHoursReport` — `{ term: { id, name, startDate, endDate } | null, today, subjects: SubjectHours[], teachers: TeacherHours[] }`.
+
+`SubjectHours` — `{ group, subject, teacher, plannedHours, plannedSource: 'CURRICULUM' | 'SCHEDULE', scheduledHoursToDate, conductedHoursToDate, balancePairsToDate, missedPairsToDate, givenAwayPairsToDate, receivedPairsToDate, forecastHours, forecastBalanceHours, completionDate, extraPairsAfterCompletion, status: 'AHEAD' | 'BEHIND' | 'ON_TRACK' }`.
+
+`TeacherHours` — `{ teacher, scheduledHoursToDate, conductedHoursToDate, balanceHoursToDate, takenPairsToDate, givenAwayPairsToDate, missedPairsToDate }`.
+
+Правила расчёта: пара — 2 часа. Пара по сетке относится к предмету и преподавателю слота. Проведённая пара — к фактическому предмету и преподавателю с учётом замены. Пара отсутствующего преподавателя без замены считается сорванной. План — `Curriculum.plannedHours` для семестра группы, иначе все пары сетки за семестр. `completionDate` — дата пары, на которой проведённые часы достигают плана, `extraPairsAfterCompletion` — пары после неё до конца семестра.
+
+В ответе `GET /api/substitutions/suggest` добавлены `slotSubjectBalancePairs` и у кандидатов другого предмета `subjectBalancePairs`; кандидаты другого предмета сортируются по вычитке по возрастанию, затем по нагрузке. Журнал отдаёт `programHours: SubjectHours | null`.
 
 `pairsByDay` — 7 чисел с понедельника по воскресенье, с учётом замен. Раскраска на фронте: 0 — без фона, 1–3 — `#DCFCE7`, 4–5 — `#FEF3C7`, 6 и больше — `#FEE2E2`.
 

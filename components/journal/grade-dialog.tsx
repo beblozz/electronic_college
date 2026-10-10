@@ -40,8 +40,9 @@ const gradeValues = [5, 4, 3, 2]
 export function GradeDialog({ subjectId, student, date, lesson, plan, viewerTeacherId, onClose }: GradeDialogProps) {
   const [grades, setGrades] = useState<GradeDto[]>(student.grades.filter((grade) => grade.date === date))
   const [comment, setComment] = useState('')
-  const [kind, setKind] = useState<GradeKind>('ANSWER')
-  const [planItemId, setPlanItemId] = useState('')
+  const scheduledItem = plan.items.find((item) => item.plannedDate === date) ?? null
+  const [kind, setKind] = useState<GradeKind>(scheduledItem ? gradeKindForPlanItem[scheduledItem.kind] : 'ANSWER')
+  const [planItemId, setPlanItemId] = useState(scheduledItem?.id ?? '')
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const currentAttendance = lesson
@@ -77,7 +78,6 @@ export function GradeDialog({ subjectId, student, date, lesson, plan, viewerTeac
       })
       setGrades((current) => [...current, grade])
       setComment('')
-      setPlanItemId('')
     })
 
   const removeGrade = (gradeId: string) =>
@@ -135,6 +135,13 @@ export function GradeDialog({ subjectId, student, date, lesson, plan, viewerTeac
           ))}
         </div>
 
+        {scheduledItem ? (
+          <p className="text-caption text-muted">
+            По КТП на эту дату: <span className="text-ink">{planItemLabel(scheduledItem)}</span>. Оценка привяжется к
+            этой работе, менять ничего не нужно.
+          </p>
+        ) : null}
+
         <div className="grid grid-cols-2 gap-3">
           <Field label="За что">
             <Select value={kind} onChange={(event) => setKind(event.target.value as GradeKind)}>
@@ -151,9 +158,7 @@ export function GradeDialog({ subjectId, student, date, lesson, plan, viewerTeac
               onChange={(event) => {
                 setPlanItemId(event.target.value)
                 const item = plan.items.find((candidate) => candidate.id === event.target.value)
-                if (item) {
-                  setKind(gradeKindForPlanItem[item.kind])
-                }
+                setKind(item ? gradeKindForPlanItem[item.kind] : 'ANSWER')
               }}
             >
               <option value="">{plan.items.length === 0 ? 'КТП не заполнен' : 'Не привязывать'}</option>

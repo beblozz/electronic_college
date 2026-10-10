@@ -125,12 +125,14 @@ export const resourceConfigs: ResourceConfig[] = [
       { key: 'subjectName', label: 'Предмет' },
       { key: 'teacherName', label: 'Преподаватель' },
       { key: 'semester', label: 'Семестр' },
+      { key: 'plannedHours', label: 'Часов на семестр' },
     ],
     fields: [
       { name: 'groupId', label: 'Группа', type: 'reference', resource: 'groups', labelKey: 'name' },
       { name: 'subjectId', label: 'Предмет', type: 'reference', resource: 'subjects', labelKey: 'name' },
       { name: 'teacherId', label: 'Преподаватель', type: 'reference', resource: 'teachers', labelKey: 'fullName' },
       { name: 'semester', label: 'Семестр', type: 'number' },
+      { name: 'plannedHours', label: 'Часов на семестр (пусто — по сетке)', type: 'number', isOptional: true },
     ],
   },
   {

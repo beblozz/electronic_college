@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { AttendanceDialog } from '@/components/journal/attendance-dialog'
 import { GradeDialog } from '@/components/journal/grade-dialog'
+import { formatPairBalance } from '@/components/hours/hours-format'
 import { InsightsPanel } from '@/components/journal/insights-panel'
 import { attendanceMarks, gradeKindLabels } from '@/components/journal/journal-labels'
 import { PlanDialog } from '@/components/journal/plan-dialog'
@@ -13,25 +14,45 @@ import { PageHeader } from '@/components/ui/page-header'
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states'
 import { useApi } from '@/lib/client/api'
 import { formatDisplayDate, formatShortDate } from '@/lib/dates'
-import type { GradeDto, Journal, JournalLessonColumn, JournalScope, JournalStudentRow } from '@/lib/types'
+import type {
+  GradeDto,
+  Journal,
+  JournalLessonColumn,
+  JournalScope,
+  JournalStudentRow,
+  StudyPlanItemDto,
+} from '@/lib/types'
 
-type JournalColumn = { key: string; date: string; lesson: JournalLessonColumn | null; showsGrades: boolean }
+type JournalColumn = {
+  key: string
+  date: string
+  lesson: JournalLessonColumn | null
+  showsGrades: boolean
+  planItem: StudyPlanItemDto | null
+}
 
 type SelectedCell = { student: JournalStudentRow; column: JournalColumn }
 
 function buildColumns(journal: Journal): JournalColumn[] {
   return journal.dates.flatMap((date): JournalColumn[] => {
     const lessons = journal.lessons.filter((lesson) => lesson.date === date)
+    const planItem = journal.plan.items.find((item) => item.plannedDate === date) ?? null
     if (lessons.length === 0) {
-      return [{ key: date, date, lesson: null, showsGrades: true }]
+      return [{ key: date, date, lesson: null, showsGrades: true, planItem }]
     }
     return lessons.map((lesson, index) => ({
       key: `${date}:${lesson.scheduleSlotId}`,
       date,
       lesson,
       showsGrades: index === 0,
+      planItem: index === 0 ? planItem : null,
     }))
   })
+}
+
+function planItemShortLabel(item: StudyPlanItemDto, journal: Journal): string {
+  const number = journal.plan.items.filter((candidate) => candidate.kind === item.kind && candidate.position <= item.position).length
+  return item.kind === 'LECTURE' ? `Л${number}` : `ПР${number}`
 }
 
 function gradeTitle(grade: GradeDto, journal: Journal): string {
@@ -51,6 +72,19 @@ function rowTone(student: JournalStudentRow): string {
     return 'bg-loadHigh'
   }
   return student.insight.needsAttention ? 'bg-loadMedium' : 'bg-surface'
+}
+
+function journalCaption(journal: Journal): string {
+  const parts: string[] = []
+  if (journal.teachers.length > 0) {
+    parts.push(`Ведут: ${journal.teachers.map((teacher) => teacher.fullName).join(', ')}`)
+  }
+  const hours = journal.programHours
+  if (hours) {
+    const balance = hours.balancePairsToDate === 0 ? 'по сетке' : formatPairBalance(hours.balancePairsToDate)
+    parts.push(`Вычитка: ${hours.conductedHoursToDate} из ${hours.plannedHours} ч (${balance})`)
+  }
+  return parts.join(' · ')
 }
 
 const scopeLabels: Record<JournalScope, string> = { mine: 'Моя часть', all: 'Общий журнал' }
@@ -89,11 +123,7 @@ export function JournalView({ groupId, subjectId }: { groupId: string; subjectId
     <>
       <PageHeader
         title={data ? `${data.subject.name} · ${data.group.name}` : 'Журнал'}
-        caption={
-          data && data.teachers.length > 0
-            ? `Ведут: ${data.teachers.map((teacher) => teacher.fullName).join(', ')}`
-            : 'Нажмите на ячейку, чтобы выставить оценку, или на дату, чтобы отметить посещаемость'
-        }
+        caption={data ? journalCaption(data) : undefined}
       >
         {hasSeveralTeachers ? (
           <div className="flex rounded border border-line p-0.5">
@@ -144,14 +174,30 @@ export function JournalView({ groupId, subjectId }: { groupId: string; subjectId
                         <button
                           type="button"
                           onClick={() => setAttendanceColumn(column)}
-                          title={`Отметить посещаемость. Ведёт: ${column.lesson.teacher.fullName}`}
+                          title={[
+                            `Отметить посещаемость. Ведёт: ${column.lesson.teacher.fullName}`,
+                            column.planItem ? `По КТП: ${column.planItem.title}` : '',
+                          ]
+                            .filter(Boolean)
+                            .join('. ')}
                           className="block w-full px-2 py-1.5 tabular-nums text-muted transition-colors hover:bg-line hover:text-ink"
                         >
                           {formatShortDate(column.date)}
                           <span className="block text-muted">{column.lesson.pairNumber} п.</span>
+                          {column.planItem ? (
+                            <span className="block text-accent">{planItemShortLabel(column.planItem, data)}</span>
+                          ) : null}
                         </button>
                       ) : (
-                        <span className="block px-2 py-1.5 tabular-nums text-muted">{formatShortDate(column.date)}</span>
+                        <span
+                          title={column.planItem ? `По КТП: ${column.planItem.title}` : undefined}
+                          className="block px-2 py-1.5 tabular-nums text-muted"
+                        >
+                          {formatShortDate(column.date)}
+                          {column.planItem ? (
+                            <span className="block text-accent">{planItemShortLabel(column.planItem, data)}</span>
+                          ) : null}
+                        </span>
                       )}
                     </th>
                   ))}
@@ -224,7 +270,7 @@ export function JournalView({ groupId, subjectId }: { groupId: string; subjectId
             </table>
           </div>
           <p className="mt-2 text-caption text-muted">
-            Подчёркнутые оценки привязаны к работе из КТП. Серым — оценки других преподавателей. Красная строка — отстаёт,
+            Подчёркнутые оценки привязаны к работе из КТП. Синим под датой — работа по КТП (Л — лекция, ПР — практическая): оценка в этот день привязывается к ней автоматически. Серым — оценки других преподавателей. Красная строка — отстаёт,
             жёлтая — мало оценок по сравнению с группой; причина во всплывающей подсказке у фамилии.
           </p>
         </>

@@ -246,8 +246,9 @@ model Curriculum {
   id        String @id @default(cuid())
   groupId   String
   subjectId String
-  teacherId String
-  semester  Int
+  teacherId    String
+  semester     Int
+  plannedHours Int?   @db.SmallInt
 
   group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)

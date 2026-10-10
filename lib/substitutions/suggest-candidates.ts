@@ -3,6 +3,7 @@ import { formatDate } from '@/lib/dates'
 import { badRequest, notFound } from '@/lib/http'
 import { fullName } from '@/lib/people'
 import type { DatabaseClient } from '@/lib/prisma'
+import { subjectBalances } from '@/lib/hours/program-hours'
 import { expandLessons, findLesson } from '@/lib/schedule/expand-lessons'
 import {
   collectTeacherPairs,
@@ -81,7 +82,8 @@ export async function suggestCandidates(db: DatabaseClient, options: SuggestOpti
     absences: { none: { startDate: { lte: date }, endDate: { gte: date } } },
   }
 
-  const [sameSubjectTeachers, curricula, pairsByTeacher, lessonsOfDay] = await Promise.all([
+  const term = await db.term.findFirst({ where: { startDate: { lte: date }, endDate: { gte: date } } })
+  const [sameSubjectTeachers, curricula, pairsByTeacher, lessonsOfDay, balances] = await Promise.all([
     db.teacher.findMany({
       where: { ...availableTeacher, teacherSubjects: { some: { subjectId: slot.subjectId } } },
       include: { user: true },
@@ -92,6 +94,7 @@ export async function suggestCandidates(db: DatabaseClient, options: SuggestOpti
     }),
     collectTeacherPairs(db, weekStart, weekEnd),
     expandLessons(db, { from: date, to: date }),
+    subjectBalances(db, term, slot.groupId),
   ])
 
   const context: LoadContext = { dateKey, pairNumber: slot.pairNumber, maxConsecutivePairs, pairsByTeacher }
@@ -105,10 +108,19 @@ export async function suggestCandidates(db: DatabaseClient, options: SuggestOpti
     .flatMap((curriculum) => {
       const candidate = evaluateTeacher(curriculum.teacher, context, 'Ведёт у группы свой предмет')
       return candidate
-        ? [{ ...candidate, subject: { id: curriculum.subject.id, name: curriculum.subject.name } }]
+        ? [
+            {
+              ...candidate,
+              subject: { id: curriculum.subject.id, name: curriculum.subject.name },
+              subjectBalancePairs: balances.get(curriculum.subjectId) ?? null,
+            },
+          ]
         : []
     })
-    .sort(byLoad)
+    .sort(
+      (first, second) =>
+        (first.subjectBalancePairs ?? 0) - (second.subjectBalancePairs ?? 0) || byLoad(first, second),
+    )
 
   const combinedCandidates = await findCombinedCandidates(db, {
     slot,
@@ -119,7 +131,13 @@ export async function suggestCandidates(db: DatabaseClient, options: SuggestOpti
     date,
   })
 
-  return { slot: lesson, candidates, otherSubjectCandidates, combinedCandidates }
+  return {
+    slot: lesson,
+    slotSubjectBalancePairs: balances.get(slot.subjectId) ?? null,
+    candidates,
+    otherSubjectCandidates,
+    combinedCandidates,
+  }
 }
 
 type CombinedOptions = {

@@ -400,6 +400,7 @@ const curriculumSchema = z.object({
   subjectId: idSchema,
   teacherId: idSchema,
   semester: z.coerce.number().int().min(1).max(12),
+  plannedHours: z.coerce.number().int().min(0).max(2000).nullish().transform((value) => value ?? null),
 })
 
 async function assertTeacherQualified(teacherId: string, subjectId: string): Promise<void> {

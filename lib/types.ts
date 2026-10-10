@@ -88,7 +88,10 @@ export type SubstitutionCandidate = {
   reason: string
 }
 
-export type OtherSubjectCandidate = SubstitutionCandidate & { subject: { id: string; name: string } }
+export type OtherSubjectCandidate = SubstitutionCandidate & {
+  subject: { id: string; name: string }
+  subjectBalancePairs: number | null
+}
 
 export type CombinedCandidate = {
   scheduleSlotId: string
@@ -104,6 +107,7 @@ export type CombinedCandidate = {
 
 export type SubstitutionSuggestions = {
   slot: Lesson
+  slotSubjectBalancePairs: number | null
   candidates: SubstitutionCandidate[]
   otherSubjectCandidates: OtherSubjectCandidate[]
   combinedCandidates: CombinedCandidate[]
@@ -248,6 +252,7 @@ export type Journal = {
   canEditPlan: boolean
   plan: StudyPlanDto
   stats: { medianGradeCount: number; averageGrade: number | null }
+  programHours: SubjectHours | null
 }
 
 export type HeatmapRow = {
@@ -333,6 +338,44 @@ export type KnowledgeDocumentDto = {
   fileName: string
   chunkCount: number
   createdAt: string
+}
+
+export type HoursStatus = 'AHEAD' | 'BEHIND' | 'ON_TRACK'
+
+export type SubjectHours = {
+  group: { id: string; name: string }
+  subject: { id: string; name: string }
+  teacher: PersonRef | null
+  plannedHours: number
+  plannedSource: 'CURRICULUM' | 'SCHEDULE'
+  scheduledHoursToDate: number
+  conductedHoursToDate: number
+  balancePairsToDate: number
+  missedPairsToDate: number
+  givenAwayPairsToDate: number
+  receivedPairsToDate: number
+  forecastHours: number
+  forecastBalanceHours: number
+  completionDate: string | null
+  extraPairsAfterCompletion: number
+  status: HoursStatus
+}
+
+export type TeacherHours = {
+  teacher: PersonRef
+  scheduledHoursToDate: number
+  conductedHoursToDate: number
+  balanceHoursToDate: number
+  takenPairsToDate: number
+  givenAwayPairsToDate: number
+  missedPairsToDate: number
+}
+
+export type ProgramHoursReport = {
+  term: { id: string; name: string; startDate: string; endDate: string } | null
+  today: string
+  subjects: SubjectHours[]
+  teachers: TeacherHours[]
 }
 
 export type Page<T> = { items: T[]; nextCursor: string | null }

@@ -20,7 +20,7 @@ export const gradeKindLabels: Record<GradeKind, string> = {
   ANSWER: 'Ответ',
   SURVEY: 'Опрос',
   PRACTICAL: 'Практическая работа',
-  LECTURE: 'Лекция',
+  LECTURE: 'Ответ на лекции',
   TEST: 'Контрольная работа',
 }
 

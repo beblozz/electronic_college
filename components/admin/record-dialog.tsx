@@ -56,7 +56,7 @@ function toPayload(config: ResourceConfig, values: Record<string, string>): Reco
     config.fields.map((field) => {
       const value = values[field.name]
       if (field.type === 'number') {
-        return [field.name, Number(value)]
+        return [field.name, value === '' && field.isOptional ? null : Number(value)]
       }
       if (field.type === 'reference' && value === '') {
         return [field.name, null]

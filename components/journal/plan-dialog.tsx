@@ -35,6 +35,13 @@ function numberedTitle(kind: PlanItemKind, items: DraftItem[]): string {
   return kind === 'LECTURE' ? `Лекция ${sameKindCount}` : `Практическая работа ${sameKindCount}`
 }
 
+function spreadDate(dates: string[], index: number, count: number): string | null {
+  if (count > dates.length) {
+    return dates[index] ?? null
+  }
+  return dates[Math.round(((index + 1) * dates.length) / count) - 1] ?? null
+}
+
 export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanDialogProps) {
   const [items, setItems] = useState<DraftItem[]>(() =>
     plan.items.map((item) => ({
@@ -48,7 +55,9 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
   const [admission, setAdmission] = useState(plan.customAdmissionThreshold?.toString() ?? '')
   const [autoCredit, setAutoCredit] = useState(plan.customAutoCreditThreshold?.toString() ?? '')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isFillingDates, setIsFillingDates] = useState(false)
 
   const total = items.length
   const defaultAdmission = Math.floor(total / 2)
@@ -79,6 +88,34 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
       generated.push(newDraft('PRACTICAL', `Практическая работа ${index}`))
     }
     setItems(generated)
+  }
+
+  const fillDates = async () => {
+    setIsFillingDates(true)
+    try {
+      const params = new URLSearchParams({ groupId, subjectId })
+      const { dates } = await apiFetch<{ dates: string[] }>(`/api/journal/plan/dates?${params.toString()}`)
+      if (dates.length === 0) {
+        setNotice('В текущем семестре нет пар по этому предмету')
+        return
+      }
+      setItems((current) =>
+        current.map((item, index) => {
+          const date = spreadDate(dates, index, current.length)
+          return date ? { ...item, plannedDate: date } : item
+        }),
+      )
+      setNotice(
+        items.length > dates.length
+          ? `В семестре ${dates.length} пар, работ больше: последним ${items.length - dates.length} дата не назначена`
+          : `Работы распределены равномерно по ${dates.length} парам семестра. Даты можно поправить вручную.`,
+      )
+      setError(null)
+    } catch (failure) {
+      setError(errorText(failure))
+    } finally {
+      setIsFillingDates(false)
+    }
   }
 
   const save = async () => {
@@ -114,8 +151,8 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
         </div>
       ) : null}
       <p className="mb-3 text-caption text-muted">
-        Работа считается сданной, если за неё стоит оценка 3 и выше. Оценку к работе привязывают при выставлении. Если у
-        работы указана дата, после неё студент без оценки попадает в отстающие.
+        Работа считается сданной, если за неё стоит оценка 3 и выше. Оценка, выставленная в дату работы, привязывается к ней
+        автоматически, тип оценки подставляется из КТП. Если дата прошла, а оценки нет, студент попадает в отстающие.
       </p>
 
       <div className="max-h-[45vh] overflow-y-auto rounded border border-line">
@@ -177,7 +214,11 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
         <Button size="small" variant="ghost" onClick={fillTypical}>
           Заполнить: 3 лекции и 4 практические
         </Button>
+        <Button size="small" variant="ghost" disabled={isFillingDates || items.length === 0} onClick={fillDates}>
+          Даты по расписанию
+        </Button>
       </div>
+      {notice ? <p className="mt-2 text-caption text-muted">{notice}</p> : null}
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <Field label={`Работ для допуска (по умолчанию половина — ${defaultAdmission})`}>

@@ -2,17 +2,22 @@
 
 import { useState } from 'react'
 import { WeekNavigator } from '@/components/schedule/week-navigator'
+import { balanceTone, formatHourBalance } from '@/components/hours/hours-format'
+import { HoursLegend, SubjectHoursTable } from '@/components/hours/hours-tables'
 import { PageHeader } from '@/components/ui/page-header'
+import { Section } from '@/components/ui/section'
 import { ErrorState, LoadingState } from '@/components/ui/states'
 import { Table, Td, Th } from '@/components/ui/table'
 import { useApi } from '@/lib/client/api'
 import { formatShortDate, todayLocal, weekdayNames, weekStartOf } from '@/lib/dates'
-import type { TeacherLoad } from '@/lib/types'
+import type { ProgramHoursReport, TeacherLoad } from '@/lib/types'
 
 export default function TeacherLoadPage() {
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayLocal()))
   const load = useApi<TeacherLoad>(`/api/teachers/me/load?weekStart=${weekStart}`)
   const isOverloaded = load.data ? load.data.weeklyHours > load.data.maxHoursPerWeek : false
+  const hours = useApi<ProgramHoursReport>('/api/teachers/me/hours')
+  const ownTotals = hours.data?.teachers[0]
 
   return (
     <>
@@ -56,6 +61,20 @@ export default function TeacherLoadPage() {
           </Table>
         </>
       ) : null}
+
+      <Section title="Вычитка за семестр" className="mt-6">
+        {ownTotals ? (
+          <p className="mb-2">
+            По сетке на сегодня {ownTotals.scheduledHoursToDate} ч, проведено {ownTotals.conductedHoursToDate} ч
+            <span className={`ml-1 tabular-nums ${balanceTone(ownTotals.balanceHoursToDate)}`}>
+              ({formatHourBalance(ownTotals.balanceHoursToDate)})
+            </span>
+            . Заменял пар: {ownTotals.takenPairsToDate}, отдал на замену: {ownTotals.givenAwayPairsToDate}.
+          </p>
+        ) : null}
+        {hours.data ? <SubjectHoursTable rows={hours.data.subjects} termEnd={hours.data.term?.endDate ?? null} /> : <LoadingState />}
+        <HoursLegend />
+      </Section>
     </>
   )
 }

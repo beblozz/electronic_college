@@ -2,7 +2,8 @@ import type { Prisma } from '@prisma/client'
 import { formatDate } from '@/lib/dates'
 import { notFound } from '@/lib/http'
 import { buildInsight, median } from '@/lib/journal/insights'
-import { collegeToday, loadStudyPlan, planProgress, resolveSemester } from '@/lib/journal/study-plan'
+import { subjectHoursFor } from '@/lib/hours/program-hours'
+import { collegeToday, currentTerm, loadStudyPlan, planProgress, resolveSemester } from '@/lib/journal/study-plan'
 import { fullName, teacherRef } from '@/lib/people'
 import { prisma } from '@/lib/prisma'
 import { expandLessons } from '@/lib/schedule/expand-lessons'
@@ -54,7 +55,7 @@ export async function buildJournal(options: JournalOptions): Promise<Journal> {
   }
 
   const semester = await resolveSemester(prisma, groupId, subjectId)
-  const [students, groupLessons, plan, curriculum] = await Promise.all([
+  const [students, groupLessons, plan, curriculum, programHours] = await Promise.all([
     prisma.student.findMany({
       where: { groupId, status: 'ACTIVE' },
       include: {
@@ -71,6 +72,7 @@ export async function buildJournal(options: JournalOptions): Promise<Journal> {
       include: { teacher: { include: { user: true } } },
       orderBy: { semester: 'desc' },
     }),
+    currentTerm(prisma).then((term) => subjectHoursFor(prisma, term, groupId, subjectId)),
   ])
 
   const subjectLessons = groupLessons.filter((lesson) => lesson.subject.id === subjectId)
@@ -130,6 +132,7 @@ export async function buildJournal(options: JournalOptions): Promise<Journal> {
     canEditPlan: options.canEditPlan,
     plan,
     stats: { medianGradeCount, averageGrade: averageOf(allVisibleValues) },
+    programHours,
     students: students.map((student) => {
       const grades = visibleGradesByStudent.get(student.id) ?? []
       const averageGrade = averageOf(grades.map((grade) => grade.value))
