@@ -10,12 +10,16 @@ export type LessonFilter = {
   teacherId?: string
   roomId?: string
   scheduleSlotId?: string
+  onlyExtra?: boolean
 }
 
 type ExpandOptions = { from: Date; to: Date; filter?: LessonFilter }
 
 function slotWhere(filter: LessonFilter, from: Date, to: Date): Prisma.ScheduleSlotWhereInput {
-  const where: Prisma.ScheduleSlotWhereInput = {}
+  const extraInRange = { extraDate: { gte: from, lte: to } }
+  const where: Prisma.ScheduleSlotWhereInput = {
+    AND: [filter.onlyExtra ? extraInRange : { OR: [{ extraDate: null }, extraInRange] }],
+  }
   if (filter.groupId) {
     where.groupId = filter.groupId
   }
@@ -37,9 +41,6 @@ function slotWhere(filter: LessonFilter, from: Date, to: Date): Prisma.ScheduleS
 export async function expandLessons(db: DatabaseClient, options: ExpandOptions): Promise<Lesson[]> {
   const { from, to, filter = {} } = options
   const terms = await db.term.findMany({ where: { startDate: { lte: to }, endDate: { gte: from } } })
-  if (terms.length === 0) {
-    return []
-  }
 
   const slots = await db.scheduleSlot.findMany({
     where: slotWhere(filter, from, to),
@@ -64,18 +65,20 @@ export async function expandLessons(db: DatabaseClient, options: ExpandOptions):
   const lessons: Lesson[] = []
   for (const date of eachDate(from, to)) {
     const term = terms.find((candidate) => candidate.startDate <= date && candidate.endDate >= date)
-    if (!term) {
-      continue
-    }
     const weekday = dayOfWeek(date)
-    const weekType = weekTypeForDate(term.startDate, date)
+    const weekType = term ? weekTypeForDate(term.startDate, date) : null
     const dateKey = formatDate(date)
 
     for (const slot of slots) {
-      const isActive =
-        slot.dayOfWeek === weekday &&
-        slot.semester === semesterForCourse(slot.group.courseYear, term.half) &&
-        weekTypesOverlap(slot.weekType, weekType)
+      const isActive = slot.extraDate
+        ? formatDate(slot.extraDate) === dateKey
+        : Boolean(
+            term &&
+              weekType &&
+              slot.dayOfWeek === weekday &&
+              slot.semester === semesterForCourse(slot.group.courseYear, term.half) &&
+              weekTypesOverlap(slot.weekType, weekType),
+          )
       if (!isActive) {
         continue
       }
@@ -99,6 +102,7 @@ export async function expandLessons(db: DatabaseClient, options: ExpandOptions):
         group: { id: slot.group.id, name: slot.group.name },
         room: { id: actualRoom.id, number: actualRoom.number, building: actualRoom.building },
         teacher: teacherRef(actualTeacher),
+        extra: slot.extraDate ? { reason: slot.extraReason } : null,
         substitution: substitution
           ? {
               id: substitution.id,

@@ -39,6 +39,12 @@ export function LessonDetails({ lesson, perspective, ownTeacherId }: LessonDetai
         {isTakenOver && lesson.substitution ? lesson.substitution.originalSubject.name : lesson.subject.name}
       </p>
       <p className="text-caption text-muted">{secondaryLine(lesson, perspective)}</p>
+      {lesson.extra ? (
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          <Badge tone="accent">Доп. пара</Badge>
+          {lesson.extra.reason ? <span className="text-caption text-muted">{lesson.extra.reason}</span> : null}
+        </div>
+      ) : null}
       {lesson.substitution ? (
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <Badge tone="accent">{lesson.substitution.kind === 'COMBINED' ? 'Совмещение' : 'Замена'}</Badge>

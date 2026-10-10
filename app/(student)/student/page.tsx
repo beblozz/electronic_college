@@ -22,6 +22,7 @@ export default function StudentDiaryPage() {
   const todayLessons = useApi<{ lessons: Lesson[] }>(`/api/students/me/schedule?from=${today}&to=${today}`)
   useSocketEvent('grade:created', diary.reload)
   useSocketEvent('substitution:created', todayLessons.reload)
+  useSocketEvent('schedule:changed', todayLessons.reload)
 
   if (diary.error) {
     return <ErrorState message={diary.error} />

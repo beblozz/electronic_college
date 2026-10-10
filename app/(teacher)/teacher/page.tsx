@@ -20,10 +20,12 @@ export default function TeacherTodayPage() {
     `/api/teachers/me/schedule?from=${today}&to=${today}`,
   )
   const load = useApi<TeacherLoad>(`/api/teachers/me/load?weekStart=${weekStartOf(today)}`)
-  useSocketEvent('substitution:created', () => {
+  const reloadDay = () => {
     schedule.reload()
     load.reload()
-  })
+  }
+  useSocketEvent('substitution:created', reloadDay)
+  useSocketEvent('schedule:changed', reloadDay)
 
   return (
     <>

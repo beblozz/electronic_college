@@ -80,16 +80,16 @@ async function main(): Promise<void> {
   await prisma.term.createMany({
     data: [
       {
-        name: `Осенний семестр ${startYear}/${startYear + 1}`,
+        name: `1 семестр ${startYear}/${startYear + 1}`,
         half: 1,
         startDate: parseDate(`${startYear}-09-01`),
-        endDate: parseDate(`${startYear}-12-31`),
+        endDate: parseDate(`${startYear}-12-28`),
       },
       {
-        name: `Весенний семестр ${startYear}/${startYear + 1}`,
+        name: `2 семестр ${startYear}/${startYear + 1}`,
         half: 2,
-        startDate: parseDate(`${startYear + 1}-01-11`),
-        endDate: parseDate(`${startYear + 1}-06-30`),
+        startDate: parseDate(`${startYear + 1}-01-12`),
+        endDate: parseDate(`${startYear + 1}-06-18`),
       },
     ],
   })

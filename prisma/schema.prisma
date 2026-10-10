@@ -76,6 +76,7 @@ enum NotificationType {
   GRADE_CREATED
   ANNOUNCEMENT_CREATED
   ABSENCE_REPORTED
+  EXTRA_LESSON_CREATED
 }
 
 model User {
@@ -282,6 +283,8 @@ model ScheduleSlot {
   endTime    String   @db.VarChar(5)
   weekType   WeekType @default(BOTH)
   semester   Int      @db.SmallInt
+  extraDate   DateTime? @db.Date
+  extraReason String?   @db.VarChar(200)
 
   group                 Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
   subject               Subject        @relation(fields: [subjectId], references: [id], onDelete: Restrict)
@@ -295,6 +298,7 @@ model ScheduleSlot {
   @@index([teacherId, dayOfWeek, pairNumber])
   @@index([roomId, dayOfWeek, pairNumber])
   @@index([semester])
+  @@index([extraDate])
 }
 
 model Substitution {

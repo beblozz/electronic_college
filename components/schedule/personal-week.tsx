@@ -19,6 +19,7 @@ export function PersonalWeek({ endpoint, perspective }: PersonalWeekProps) {
     `${endpoint}?from=${weekStart}&to=${shiftDate(weekStart, 6)}`,
   )
   useSocketEvent('substitution:created', schedule.reload)
+  useSocketEvent('schedule:changed', schedule.reload)
 
   return (
     <>

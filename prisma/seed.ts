@@ -105,18 +105,18 @@ async function main(): Promise<void> {
   const terms = await Promise.all([
     prisma.term.create({
       data: {
-        name: `Осенний семестр ${startYear}/${startYear + 1}`,
+        name: `1 семестр ${startYear}/${startYear + 1}`,
         half: 1,
         startDate: parseDate(`${startYear}-09-01`),
-        endDate: parseDate(`${startYear}-12-31`),
+        endDate: parseDate(`${startYear}-12-28`),
       },
     }),
     prisma.term.create({
       data: {
-        name: `Весенний семестр ${startYear}/${startYear + 1}`,
+        name: `2 семестр ${startYear}/${startYear + 1}`,
         half: 2,
         startDate: parseDate(`${startYear + 1}-01-12`),
-        endDate: parseDate(`${startYear + 1}-06-30`),
+        endDate: parseDate(`${startYear + 1}-06-18`),
       },
     }),
   ])

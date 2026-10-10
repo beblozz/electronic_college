@@ -1,5 +1,6 @@
 import { balanceTone, formatHourBalance, formatPairBalance, hoursStatusLabels } from '@/components/hours/hours-format'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/states'
 import { Table, Td, Th } from '@/components/ui/table'
 import { formatDisplayDate } from '@/lib/dates'
@@ -18,9 +19,22 @@ function forecastNote(row: SubjectHours, termEnd: string | null): string {
   return 'выполняется по плану'
 }
 
-type SubjectHoursTableProps = { rows: SubjectHours[]; termEnd: string | null; showGroup?: boolean }
+type SubjectHoursTableProps = {
+  rows: SubjectHours[]
+  termEnd: string | null
+  showGroup?: boolean
+  onAddExtra?: (row: SubjectHours) => void
+}
 
-export function SubjectHoursTable({ rows, termEnd, showGroup = true }: SubjectHoursTableProps) {
+function extraPairsNote(row: SubjectHours): string {
+  if (row.extraPairs === 0) {
+    return '—'
+  }
+  const upcoming = row.extraPairs - row.extraPairsToDate
+  return upcoming > 0 ? `${row.extraPairsToDate} + ${upcoming} впереди` : String(row.extraPairsToDate)
+}
+
+export function SubjectHoursTable({ rows, termEnd, showGroup = true, onAddExtra }: SubjectHoursTableProps) {
   if (rows.length === 0) {
     return <EmptyState>Нет данных за семестр</EmptyState>
   }
@@ -35,7 +49,9 @@ export function SubjectHoursTable({ rows, termEnd, showGroup = true }: SubjectHo
           <Th className="text-right">Проведено</Th>
           <Th className="text-right">Разница</Th>
           <Th>Отдано / получено / сорвано</Th>
+          <Th>Доп. пары</Th>
           <Th>Прогноз</Th>
+          {onAddExtra ? <Th /> : null}
         </tr>
       </thead>
       <tbody>
@@ -58,6 +74,7 @@ export function SubjectHoursTable({ rows, termEnd, showGroup = true }: SubjectHo
             <Td className="whitespace-nowrap tabular-nums text-muted">
               {row.givenAwayPairsToDate} / {row.receivedPairsToDate} / {row.missedPairsToDate}
             </Td>
+            <Td className="whitespace-nowrap tabular-nums text-muted">{extraPairsNote(row)}</Td>
             <Td>
               <span className="flex flex-wrap items-center gap-1.5">
                 <Badge tone={statusTones[row.status]}>
@@ -67,6 +84,15 @@ export function SubjectHoursTable({ rows, termEnd, showGroup = true }: SubjectHo
                 <span className="text-caption text-muted">{forecastNote(row, termEnd)}</span>
               </span>
             </Td>
+            {onAddExtra ? (
+              <Td className="text-right">
+                {row.status === 'BEHIND' ? (
+                  <Button size="small" onClick={() => onAddExtra(row)}>
+                    Доп. пара
+                  </Button>
+                ) : null}
+              </Td>
+            ) : null}
           </tr>
         ))}
       </tbody>
@@ -89,6 +115,7 @@ export function TeacherHoursTable({ rows }: { rows: TeacherHours[] }) {
           <Th className="text-right">Заменял, пар</Th>
           <Th className="text-right">Отдал на замену</Th>
           <Th className="text-right">Сорвано</Th>
+          <Th className="text-right">Доп. пары</Th>
         </tr>
       </thead>
       <tbody>
@@ -105,6 +132,7 @@ export function TeacherHoursTable({ rows }: { rows: TeacherHours[] }) {
             <Td className={`text-right tabular-nums ${row.missedPairsToDate > 0 ? 'text-danger' : 'text-muted'}`}>
               {row.missedPairsToDate}
             </Td>
+            <Td className="text-right tabular-nums">{row.extraPairsToDate}</Td>
           </tr>
         ))}
       </tbody>
@@ -117,7 +145,8 @@ export function HoursLegend() {
     <p className="mt-2 text-caption text-muted">
       Одна пара — 2 часа. «Разница» — сколько пар предмет получил сверх сетки или недополучил на сегодня. «Отдано» —
       пары, которые провели другим предметом, «получено» — пары, взятые у другого предмета, «сорвано» — пары
-      отсутствующего преподавателя без замены. Звёздочка у плана — часы посчитаны по сетке, потому что в учебном плане
+      отсутствующего преподавателя без замены. Доп. пары засчитываются в проведённые часы предмета, но не в сетку, поэтому
+      закрывают долг. Звёздочка у плана — часы посчитаны по сетке, потому что в учебном плане
       их не указали.
     </p>
   )

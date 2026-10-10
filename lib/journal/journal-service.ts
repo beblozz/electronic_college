@@ -99,6 +99,7 @@ export async function buildJournal(options: JournalOptions): Promise<Journal> {
     scheduleSlotId: lesson.scheduleSlotId,
     pairNumber: lesson.pairNumber,
     teacher: lesson.teacher,
+    isExtra: lesson.extra !== null,
   }))
   const todayKey = formatDate(collegeToday())
   const heldLessonKeys = new Set(

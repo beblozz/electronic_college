@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireSession } from '@/lib/auth'
-import { noContent, notFound, parseBody, route } from '@/lib/http'
+import { badRequest, noContent, notFound, parseBody, route } from '@/lib/http'
 import { prisma } from '@/lib/prisma'
 import { assertSlotIsValid, serializeSlot, slotSchema } from '@/lib/schedule/slot-service'
 
@@ -14,6 +14,9 @@ export const PATCH = route<Params>(async (request, { id }) => {
       const current = await transaction.scheduleSlot.findUnique({ where: { id } })
       if (!current) {
         throw notFound('Пара не найдена')
+      }
+      if (current.extraDate) {
+        throw badRequest('Дополнительная пара меняется в разделе «Доп. пары»')
       }
       const merged = slotSchema.parse({ ...serializeSlot(current), ...changes })
       await assertSlotIsValid(transaction, merged, id)

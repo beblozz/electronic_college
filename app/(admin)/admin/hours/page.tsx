@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { text, useDirectory } from '@/components/admin/use-directory'
+import { ExtraLessonDialog, ExtraLessonDraft } from '@/components/extra-lessons/extra-lesson-dialog'
 import { HoursLegend, SubjectHoursTable, TeacherHoursTable } from '@/components/hours/hours-tables'
 import { Field, Select } from '@/components/ui/field'
 import { PageHeader } from '@/components/ui/page-header'
@@ -17,6 +18,9 @@ const modeLabels: Record<Mode, string> = { subjects: 'По предметам', 
 export default function AdminHoursPage() {
   const terms = useDirectory('terms')
   const groups = useDirectory('groups')
+  const teachers = useDirectory('teachers')
+  const rooms = useDirectory('rooms')
+  const [extraDraft, setExtraDraft] = useState<ExtraLessonDraft | null>(null)
   const [termId, setTermId] = useState('')
   const [groupId, setGroupId] = useState('')
   const [mode, setMode] = useState<Mode>('subjects')
@@ -104,10 +108,35 @@ export default function AdminHoursPage() {
       {report.error ? <ErrorState message={report.error} /> : null}
       {!report.data && report.isLoading ? <LoadingState /> : null}
       {report.data && mode === 'subjects' ? (
-        <SubjectHoursTable rows={subjectRows} termEnd={report.data.term?.endDate ?? null} showGroup={!groupId} />
+        <SubjectHoursTable
+          rows={subjectRows}
+          termEnd={report.data.term?.endDate ?? null}
+          showGroup={!groupId}
+          onAddExtra={(row) =>
+            setExtraDraft({
+              groupId: row.group.id,
+              subjectId: row.subject.id,
+              teacherId: row.teacher?.id,
+              reason: 'Отработка долга по вычитке',
+            })
+          }
+        />
       ) : null}
       {report.data && mode === 'teachers' ? <TeacherHoursTable rows={report.data.teachers} /> : null}
       <HoursLegend />
+      {extraDraft ? (
+        <ExtraLessonDialog
+          draft={extraDraft}
+          groups={groups}
+          teachers={teachers}
+          rooms={rooms}
+          onClose={() => setExtraDraft(null)}
+          onSaved={() => {
+            setExtraDraft(null)
+            report.reload()
+          }}
+        />
+      ) : null}
     </>
   )
 }

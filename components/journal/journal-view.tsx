@@ -183,7 +183,9 @@ export function JournalView({ groupId, subjectId }: { groupId: string; subjectId
                           className="block w-full px-2 py-1.5 tabular-nums text-muted transition-colors hover:bg-line hover:text-ink"
                         >
                           {formatShortDate(column.date)}
-                          <span className="block text-muted">{column.lesson.pairNumber} п.</span>
+                          <span className="block text-muted">
+                            {column.lesson.pairNumber} п.{column.lesson.isExtra ? ', доп.' : ''}
+                          </span>
                           {column.planItem ? (
                             <span className="block text-accent">{planItemShortLabel(column.planItem, data)}</span>
                           ) : null}

@@ -27,6 +27,8 @@ type SubjectAccumulator = {
   missedPairsToDate: number
   givenAwayPairsToDate: number
   receivedPairsToDate: number
+  extraPairs: number
+  extraPairsToDate: number
   forecastPairs: number
   heldDates: string[]
 }
@@ -41,6 +43,8 @@ function emptySubject(group: { id: string; name: string }, subject: { id: string
     missedPairsToDate: 0,
     givenAwayPairsToDate: 0,
     receivedPairsToDate: 0,
+    extraPairs: 0,
+    extraPairsToDate: 0,
     forecastPairs: 0,
     heldDates: [],
   }
@@ -107,12 +111,29 @@ export async function buildProgramHoursReport(db: DatabaseClient, options: Repor
       takenPairsToDate: 0,
       givenAwayPairsToDate: 0,
       missedPairsToDate: 0,
+      extraPairsToDate: 0,
     }
     teachers.set(teacher.id, entry)
     return entry
   }
 
   for (const lesson of lessons) {
+    if (lesson.extra) {
+      const entry = subjectEntry(lesson.group, { id: lesson.subject.id, name: lesson.subject.name })
+      entry.extraPairs += 1
+      if (lesson.isHeld) {
+        entry.forecastPairs += 1
+        entry.heldDates.push(lesson.date)
+      }
+      if (lesson.isPast && lesson.isHeld) {
+        entry.conductedPairsToDate += 1
+        entry.extraPairsToDate += 1
+        const teacher = teacherEntry(lesson.teacher)
+        teacher.conductedHoursToDate += hoursPerPair
+        teacher.extraPairsToDate += 1
+      }
+      continue
+    }
     const grid = subjectEntry(lesson.group, { id: lesson.gridSubjectId, name: lesson.gridSubjectName })
     const actual = subjectEntry(lesson.group, { id: lesson.subject.id, name: lesson.subject.name })
     const isSubjectChanged = lesson.gridSubjectId !== lesson.subject.id
@@ -182,6 +203,8 @@ export async function buildProgramHoursReport(db: DatabaseClient, options: Repor
         missedPairsToDate: entry.missedPairsToDate,
         givenAwayPairsToDate: entry.givenAwayPairsToDate,
         receivedPairsToDate: entry.receivedPairsToDate,
+        extraPairs: entry.extraPairs,
+        extraPairsToDate: entry.extraPairsToDate,
         forecastHours,
         forecastBalanceHours: forecastHours - plannedHours,
         completionDate,

@@ -39,6 +39,7 @@ export function WeekBrowser() {
     isReady ? `/api/schedule?${kind}=${entityId}&from=${weekStart}&to=${shiftDate(weekStart, 6)}` : null,
   )
   useSocketEvent('substitution:created', schedule.reload)
+  useSocketEvent('schedule:changed', schedule.reload)
 
   return (
     <>

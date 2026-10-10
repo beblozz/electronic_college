@@ -8,6 +8,7 @@ export type NotificationType =
   | 'GRADE_CREATED'
   | 'ANNOUNCEMENT_CREATED'
   | 'ABSENCE_REPORTED'
+  | 'EXTRA_LESSON_CREATED'
 
 export type PersonRef = { id: string; fullName: string }
 
@@ -48,6 +49,7 @@ export type Lesson = {
   group: { id: string; name: string }
   room: { id: string; number: string; building: string }
   teacher: PersonRef
+  extra: { reason: string | null } | null
   substitution: LessonSubstitution | null
 }
 
@@ -226,6 +228,7 @@ export type JournalLessonColumn = {
   scheduleSlotId: string
   pairNumber: number
   teacher: PersonRef
+  isExtra: boolean
 }
 
 export type JournalStudentRow = {
@@ -354,6 +357,8 @@ export type SubjectHours = {
   missedPairsToDate: number
   givenAwayPairsToDate: number
   receivedPairsToDate: number
+  extraPairs: number
+  extraPairsToDate: number
   forecastHours: number
   forecastBalanceHours: number
   completionDate: string | null
@@ -369,6 +374,7 @@ export type TeacherHours = {
   takenPairsToDate: number
   givenAwayPairsToDate: number
   missedPairsToDate: number
+  extraPairsToDate: number
 }
 
 export type ProgramHoursReport = {
@@ -379,3 +385,19 @@ export type ProgramHoursReport = {
 }
 
 export type Page<T> = { items: T[]; nextCursor: string | null }
+
+export type AcademicTerm = {
+  id: string
+  name: string
+  half: number
+  startDate: string
+  endDate: string
+  weeks: number
+}
+
+export type AcademicYear = {
+  startYear: number
+  first: AcademicTerm | null
+  second: AcademicTerm | null
+  breakDays: number | null
+}

@@ -31,5 +31,12 @@ export function describeNotification(notification: NotificationDto): Notificatio
       href: '/admin/substitutions',
     }
   }
+  if (notification.type === 'EXTRA_LESSON_CREATED') {
+    return {
+      title: 'Дополнительная пара',
+      text: `${formatDisplayDate(field(payload, 'date'))}, ${field(payload, 'pairNumber')} пара, ${field(payload, 'groupName')}: ${field(payload, 'subjectName')}, ${field(payload, 'teacherName')}, ауд. ${field(payload, 'roomNumber')}`,
+      href: '/',
+    }
+  }
   return { title: 'Объявление', text: field(payload, 'title'), href: '/announcements' }
 }

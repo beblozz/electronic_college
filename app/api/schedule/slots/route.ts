@@ -16,7 +16,7 @@ export const GET = route(async (request) => {
   await requireSession('ADMIN')
   const query = parseQuery(request, querySchema)
   const slots = await prisma.scheduleSlot.findMany({
-    where: query,
+    where: { ...query, extraDate: null },
     include: slotViewInclude,
     orderBy: [{ dayOfWeek: 'asc' }, { pairNumber: 'asc' }],
   })

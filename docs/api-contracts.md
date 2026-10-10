@@ -222,6 +222,27 @@ type ConflictDetails = {
 
 В `POST /api/journal/grade` поле `kind` необязательно. Если `planItemId` не передан, сервер ищет работу КТП группы по предмету с `plannedDate`, равной дате оценки, и привязывает оценку к ней; `kind` при этом берётся из работы (`LECTURE` или `PRACTICAL`). `planItemId: null` — не привязывать. Без работы на эту дату и без `kind` оценка получает `ANSWER`.
 
+### Доп. пары (версия 1.4)
+
+| Метод и путь | Назначение | Вход | Выход | Роль |
+| --- | --- | --- | --- | --- |
+| GET /api/admin/extra-lessons | Доп. пары семестра | query `termId?` (по умолчанию текущий) | 200 `{ lessons: Lesson[] }` | ADMIN |
+| POST /api/admin/extra-lessons | Назначить доп. пару | `{ groupId, subjectId, teacherId, roomId, date, pairNumber: 1..8, reason? }` | 201 `{ lesson: Lesson }`, 409 `SCHEDULE_CONFLICT` с `details.conflicts`, 400 если преподавателю не назначен предмет. Уведомление `EXTRA_LESSON_CREATED` студентам группы и преподавателю, событие `schedule:changed` в `group:{groupId}` и `user:{userId}` | ADMIN |
+| DELETE /api/admin/extra-lessons/:id | Отменить доп. пару (`id` — `scheduleSlotId`) | — | 204, событие `schedule:changed` | ADMIN |
+
+Доп. пара хранится как `ScheduleSlot` с `extraDate` и `extraReason`. У `Lesson` добавлено поле `extra: { reason: string | null } | null`, у колонки журнала — `isExtra`. `GET /api/schedule/slots` возвращает только пары сетки, `PATCH /api/schedule/:id` для доп. пары возвращает 400.
+
+В вычитке у `SubjectHours` добавлены `extraPairs` (все доп. пары семестра) и `extraPairsToDate`, у `TeacherHours` — `extraPairsToDate`. Проведённая доп. пара увеличивает проведённые часы и прогноз, но не часы по сетке.
+
+### Учебный год (версия 1.4)
+
+| Метод и путь | Назначение | Вход | Выход | Роль |
+| --- | --- | --- | --- | --- |
+| GET /api/admin/academic-years | Учебные годы из семестров | — | 200 `{ years: Array<{ startYear, first: AcademicTerm \| null, second: AcademicTerm \| null, breakDays }> }`, `AcademicTerm` — `{ id, name, half, startDate, endDate, weeks }` | ADMIN |
+| PUT /api/admin/academic-years/:startYear | Задать сроки обоих семестров | `{ first: { startDate, endDate }, second: { startDate, endDate } }` | 200 `{ years }`. 400, если даты перепутаны, 1 семестр начинается не в `startYear` или семестр пересекается с другим | ADMIN |
+
+Учебный год семестра: год начала для полугодия 1, год начала минус один для полугодия 2. Новые семестры получают названия «1 семестр 2026/2027» и «2 семестр 2026/2027».
+
 ### Вычитка часов (версия 1.3)
 
 | Метод и путь | Назначение | Вход | Выход | Роль |

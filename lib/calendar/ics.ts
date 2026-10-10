@@ -34,7 +34,7 @@ function utcStamp(date: Date): string {
 }
 
 export function lessonSummary(lesson: Lesson): string {
-  return `${lesson.subject.name} · ${lesson.group.name}`
+  return `${lesson.extra ? 'Доп. пара: ' : ''}${lesson.subject.name} · ${lesson.group.name}`
 }
 
 export function lessonLocation(lesson: Lesson): string {
@@ -43,6 +43,9 @@ export function lessonLocation(lesson: Lesson): string {
 
 export function lessonDescription(lesson: Lesson): string {
   const lines = [`Преподаватель: ${lesson.teacher.fullName}`, `Пара: ${lesson.pairNumber}`]
+  if (lesson.extra?.reason) {
+    lines.push(`Доп. пара: ${lesson.extra.reason}`)
+  }
   if (lesson.substitution) {
     lines.push(`Замена вместо: ${lesson.substitution.originalTeacher.fullName}`)
   }

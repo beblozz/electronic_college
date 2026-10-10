@@ -16,6 +16,7 @@ export async function findSlotConflicts(
     where: {
       dayOfWeek: candidate.dayOfWeek,
       pairNumber: candidate.pairNumber,
+      extraDate: null,
       id: excludedSlotId ? { not: excludedSlotId } : undefined,
       OR: [{ teacherId: candidate.teacherId }, { roomId: candidate.roomId }, { groupId: candidate.groupId }],
     },
