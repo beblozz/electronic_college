@@ -1,22 +1,25 @@
-import { balanceTone, formatHourBalance, formatPairBalance, hoursStatusLabels } from '@/components/hours/hours-format'
+import {
+  balanceTone,
+  completionText,
+  formatHourBalance,
+  formatPairBalance,
+  hoursStatusLabels,
+  remainingText,
+} from '@/components/hours/hours-format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/states'
 import { Table, Td, Th } from '@/components/ui/table'
-import { formatDisplayDate } from '@/lib/dates'
 import type { SubjectHours, TeacherHours } from '@/lib/types'
 
 const statusTones = { AHEAD: 'warning', BEHIND: 'danger', ON_TRACK: 'neutral' } as const
 
 function forecastNote(row: SubjectHours, termEnd: string | null): string {
-  if (row.status === 'BEHIND') {
-    return `к концу семестра не хватит ${Math.abs(row.forecastBalanceHours)} ч`
+  const completion = completionText(row)
+  if (row.status === 'AHEAD' && row.completionDate && termEnd && row.completionDate < termEnd) {
+    return `${completion}, дальше лишних пар: ${row.extraPairsAfterCompletion}`
   }
-  if (row.status === 'AHEAD' && row.completionDate) {
-    const isEarlier = termEnd ? row.completionDate < termEnd : false
-    return `план выполнится ${formatDisplayDate(row.completionDate)}${isEarlier ? `, дальше лишних пар: ${row.extraPairsAfterCompletion}` : ''}`
-  }
-  return 'выполняется по плану'
+  return `${completion}, ${remainingText(row)}`
 }
 
 type SubjectHoursTableProps = {

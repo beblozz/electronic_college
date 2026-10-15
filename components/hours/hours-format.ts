@@ -1,4 +1,5 @@
-import type { HoursStatus } from '@/lib/types'
+import { formatDisplayDate } from '@/lib/dates'
+import type { HoursStatus, SubjectHours } from '@/lib/types'
 
 function pairWord(count: number): string {
   const lastTwo = count % 100
@@ -38,4 +39,18 @@ export const hoursStatusLabels: Record<HoursStatus, string> = {
   AHEAD: 'Опережает',
   BEHIND: 'Долг',
   ON_TRACK: 'По плану',
+}
+
+export function completionText(row: SubjectHours): string {
+  if (row.remainingPairs === 0 && row.completionDate) {
+    return `вычитан ${formatDisplayDate(row.completionDate)}`
+  }
+  if (row.status === 'BEHIND' || !row.completionDate) {
+    return `не успевает: не хватит ${Math.abs(row.forecastBalanceHours)} ч`
+  }
+  return `закончится ${formatDisplayDate(row.completionDate)}`
+}
+
+export function remainingText(row: SubjectHours): string {
+  return row.remainingPairs > 0 ? `осталось ${row.remainingPairs} ${pairWord(row.remainingPairs)}` : 'программа вычитана'
 }

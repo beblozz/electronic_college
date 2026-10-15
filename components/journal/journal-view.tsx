@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { AttendanceDialog } from '@/components/journal/attendance-dialog'
 import { GradeDialog } from '@/components/journal/grade-dialog'
-import { formatPairBalance } from '@/components/hours/hours-format'
+import { completionText, formatPairBalance, remainingText } from '@/components/hours/hours-format'
 import { InsightsPanel } from '@/components/journal/insights-panel'
 import { attendanceMarks, gradeKindLabels } from '@/components/journal/journal-labels'
 import { PlanDialog } from '@/components/journal/plan-dialog'
@@ -52,6 +52,9 @@ function buildColumns(journal: Journal): JournalColumn[] {
 
 function planItemShortLabel(item: StudyPlanItemDto, journal: Journal): string {
   const number = journal.plan.items.filter((candidate) => candidate.kind === item.kind && candidate.position <= item.position).length
+  if (item.kind === 'CREDIT') {
+    return 'Зачёт'
+  }
   return item.kind === 'LECTURE' ? `Л${number}` : `ПР${number}`
 }
 
@@ -83,8 +86,18 @@ function journalCaption(journal: Journal): string {
   if (hours) {
     const balance = hours.balancePairsToDate === 0 ? 'по сетке' : formatPairBalance(hours.balancePairsToDate)
     parts.push(`Вычитка: ${hours.conductedHoursToDate} из ${hours.plannedHours} ч (${balance})`)
+    parts.push(`${completionText(hours)}, ${remainingText(hours)}`)
   }
   return parts.join(' · ')
+}
+
+function planButtonLabel(journal: Journal): string {
+  if (journal.plan.items.length === 0) {
+    return 'КТП: не заполнен'
+  }
+  const works = journal.plan.items.filter((item) => item.kind !== 'CREDIT').length
+  const hasCredit = journal.plan.items.some((item) => item.kind === 'CREDIT')
+  return `КТП: ${works} работ${hasCredit ? ' и зачёт' : ''}`
 }
 
 const scopeLabels: Record<JournalScope, string> = { mine: 'Моя часть', all: 'Общий журнал' }
@@ -143,7 +156,7 @@ export function JournalView({ groupId, subjectId }: { groupId: string; subjectId
         ) : null}
         {data ? (
           <Button onClick={() => setIsPlanOpen(true)} disabled={!data.canEditPlan}>
-            КТП: {data.plan.items.length} {data.plan.items.length === 0 ? '(не заполнен)' : 'работ'}
+            {planButtonLabel(data)}
           </Button>
         ) : null}
         <Field label="С">
@@ -272,7 +285,7 @@ export function JournalView({ groupId, subjectId }: { groupId: string; subjectId
             </table>
           </div>
           <p className="mt-2 text-caption text-muted">
-            Подчёркнутые оценки привязаны к работе из КТП. Синим под датой — работа по КТП (Л — лекция, ПР — практическая): оценка в этот день привязывается к ней автоматически. Серым — оценки других преподавателей. Красная строка — отстаёт,
+            Подчёркнутые оценки привязаны к работе из КТП. Синим под датой — работа по КТП (Л — лекция, ПР — практическая, Зачёт): оценка в этот день привязывается к ней автоматически. Серым — оценки других преподавателей. Красная строка — отстаёт,
             жёлтая — мало оценок по сравнению с группой; причина во всплывающей подсказке у фамилии.
           </p>
         </>

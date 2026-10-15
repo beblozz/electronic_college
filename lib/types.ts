@@ -117,8 +117,8 @@ export type SubstitutionSuggestions = {
 
 export type GeneratedCredentials = { email: string; fullName: string; password: string }
 
-export type GradeKind = 'ANSWER' | 'SURVEY' | 'PRACTICAL' | 'LECTURE' | 'TEST'
-export type PlanItemKind = 'LECTURE' | 'PRACTICAL'
+export type GradeKind = 'ANSWER' | 'SURVEY' | 'PRACTICAL' | 'LECTURE' | 'TEST' | 'CREDIT'
+export type PlanItemKind = 'LECTURE' | 'PRACTICAL' | 'CREDIT'
 
 export type GradeDto = {
   id: string
@@ -148,7 +148,7 @@ export type StudyPlanDto = {
   customAutoCreditThreshold: number | null
 }
 
-export type PlanStatus = 'AUTO_CREDIT' | 'ADMITTED' | 'NOT_ADMITTED'
+export type PlanStatus = 'CREDITED' | 'AUTO_CREDIT' | 'ADMITTED' | 'NOT_ADMITTED'
 
 export type PlanProgress = {
   completed: number
@@ -157,6 +157,8 @@ export type PlanProgress = {
   admissionThreshold: number
   autoCreditThreshold: number
   status: PlanStatus
+  hasCredit: boolean
+  creditPassed: boolean
   completedItemIds: string[]
 }
 
@@ -362,6 +364,7 @@ export type SubjectHours = {
   forecastHours: number
   forecastBalanceHours: number
   completionDate: string | null
+  remainingPairs: number
   extraPairsAfterCompletion: number
   status: HoursStatus
 }
@@ -401,3 +404,7 @@ export type AcademicYear = {
   second: AcademicTerm | null
   breakDays: number | null
 }
+
+export type ParallelGroup = { id: string; name: string; planItemCount: number }
+
+export type PlanCopyResult = { groupId: string; groupName: string; itemCount: number; datedCount: number }

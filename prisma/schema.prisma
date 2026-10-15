@@ -51,11 +51,13 @@ enum GradeKind {
   PRACTICAL
   LECTURE
   TEST
+  CREDIT
 }
 
 enum PlanItemKind {
   LECTURE
   PRACTICAL
+  CREDIT
 }
 
 enum AttendanceStatus {

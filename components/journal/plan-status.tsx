@@ -2,7 +2,7 @@ import { planStatusLabels } from '@/components/journal/journal-labels'
 import { Badge } from '@/components/ui/badge'
 import type { PlanProgress } from '@/lib/types'
 
-const statusTones = { AUTO_CREDIT: 'success', ADMITTED: 'neutral', NOT_ADMITTED: 'danger' } as const
+const statusTones = { CREDITED: 'success', AUTO_CREDIT: 'success', ADMITTED: 'neutral', NOT_ADMITTED: 'danger' } as const
 
 export function PlanStatus({ progress }: { progress: PlanProgress | null }) {
   if (!progress) {
@@ -11,7 +11,12 @@ export function PlanStatus({ progress }: { progress: PlanProgress | null }) {
   return (
     <span
       className="inline-flex items-center gap-1.5 whitespace-nowrap"
-      title={`Сдано ${progress.completed} из ${progress.total}. Допуск — ${progress.admissionThreshold}, автомат — ${progress.autoCreditThreshold}`}
+      title={[
+        `Сдано работ ${progress.completed} из ${progress.total}. Допуск — ${progress.admissionThreshold}, автомат — ${progress.autoCreditThreshold}`,
+        progress.hasCredit ? (progress.creditPassed ? 'Зачёт сдан' : 'Зачёт не сдан') : '',
+      ]
+        .filter(Boolean)
+        .join('. ')}
     >
       <span className="tabular-nums">
         {progress.completed}/{progress.total}

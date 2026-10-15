@@ -208,6 +208,7 @@ export async function buildProgramHoursReport(db: DatabaseClient, options: Repor
         forecastHours,
         forecastBalanceHours: forecastHours - plannedHours,
         completionDate,
+        remainingPairs: Math.max(plannedPairs - entry.conductedPairsToDate, 0),
         extraPairsAfterCompletion: Math.max(entry.forecastPairs - plannedPairs, 0),
         status: statusFor(forecastHours - plannedHours),
       } satisfies SubjectHours

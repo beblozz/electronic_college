@@ -3,11 +3,13 @@
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { planItemKindLabels } from '@/components/journal/journal-labels'
+import { PlanCopyPanel } from '@/components/journal/plan-copy-panel'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Field, Input, Select } from '@/components/ui/field'
 import { ErrorState } from '@/components/ui/states'
 import { apiFetch, errorText } from '@/lib/client/api'
+import { spreadDate } from '@/lib/journal/plan-spread'
 import type { PlanItemKind, StudyPlanDto } from '@/lib/types'
 
 type DraftItem = { key: string; id?: string; kind: PlanItemKind; title: string; plannedDate: string }
@@ -30,16 +32,14 @@ function newDraft(kind: PlanItemKind, title: string): DraftItem {
   return { key: `new-${draftCounter}`, kind, title, plannedDate: '' }
 }
 
+const creditTitle = 'Зачёт'
+
 function numberedTitle(kind: PlanItemKind, items: DraftItem[]): string {
   const sameKindCount = items.filter((item) => item.kind === kind).length + 1
-  return kind === 'LECTURE' ? `Лекция ${sameKindCount}` : `Практическая работа ${sameKindCount}`
-}
-
-function spreadDate(dates: string[], index: number, count: number): string | null {
-  if (count > dates.length) {
-    return dates[index] ?? null
+  if (kind === 'CREDIT') {
+    return creditTitle
   }
-  return dates[Math.round(((index + 1) * dates.length) / count) - 1] ?? null
+  return kind === 'LECTURE' ? `Лекция ${sameKindCount}` : `Практическая работа ${sameKindCount}`
 }
 
 export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanDialogProps) {
@@ -58,8 +58,9 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
   const [notice, setNotice] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isFillingDates, setIsFillingDates] = useState(false)
+  const [isCopyOpen, setIsCopyOpen] = useState(false)
 
-  const total = items.length
+  const total = items.filter((item) => item.kind !== 'CREDIT').length
   const defaultAdmission = Math.floor(total / 2)
 
   const update = (key: string, changes: Partial<DraftItem>) =>
@@ -87,6 +88,7 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
     for (let index = 1; index <= defaultPracticalCount; index += 1) {
       generated.push(newDraft('PRACTICAL', `Практическая работа ${index}`))
     }
+    generated.push(newDraft('CREDIT', creditTitle))
     setItems(generated)
   }
 
@@ -151,7 +153,8 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
         </div>
       ) : null}
       <p className="mb-3 text-caption text-muted">
-        Работа считается сданной, если за неё стоит оценка 3 и выше. Оценка, выставленная в дату работы, привязывается к ней
+        Работа считается сданной, если за неё стоит оценка 3 и выше. Зачёт не входит в число работ для допуска и
+        автомата: студент с автоматом его не сдаёт, остальным нужен допуск. Оценка, выставленная в дату работы, привязывается к ней
         автоматически, тип оценки подставляется из КТП. Если дата прошла, а оценки нет, студент попадает в отстающие.
       </p>
 
@@ -211,8 +214,11 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
         <Button size="small" onClick={() => add('PRACTICAL')}>
           Добавить практическую
         </Button>
+        <Button size="small" onClick={() => add('CREDIT')}>
+          Добавить зачёт
+        </Button>
         <Button size="small" variant="ghost" onClick={fillTypical}>
-          Заполнить: 3 лекции и 4 практические
+          Заполнить: 3 лекции, 4 практические и зачёт
         </Button>
         <Button size="small" variant="ghost" disabled={isFillingDates || items.length === 0} onClick={fillDates}>
           Даты по расписанию
@@ -243,7 +249,24 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
         </Field>
       </div>
 
+      {isCopyOpen ? (
+        <div className="mt-4">
+          <PlanCopyPanel
+            groupId={groupId}
+            subjectId={subjectId}
+            admissionThreshold={admission === '' ? null : Number(admission)}
+            autoCreditThreshold={autoCredit === '' ? null : Number(autoCredit)}
+            items={items.filter((item) => item.title.trim())}
+          />
+        </div>
+      ) : null}
+
       <div className="mt-4 flex justify-end gap-2">
+        {!isCopyOpen ? (
+          <Button variant="ghost" className="mr-auto" disabled={items.length === 0} onClick={() => setIsCopyOpen(true)}>
+            Скопировать в параллельную группу
+          </Button>
+        ) : null}
         <Button onClick={onClose}>Отмена</Button>
         <Button variant="primary" disabled={isSaving || items.some((item) => !item.title.trim())} onClick={save}>
           Сохранить КТП

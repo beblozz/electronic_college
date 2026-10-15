@@ -10,7 +10,7 @@ import { prisma } from '@/lib/prisma'
 import { emitToRooms, userRoom } from '@/lib/socket'
 import { dateSchema, idSchema } from '@/lib/validation/common'
 
-const gradeKindForPlanItem = { LECTURE: 'LECTURE', PRACTICAL: 'PRACTICAL' } as const
+const gradeKindForPlanItem = { LECTURE: 'LECTURE', PRACTICAL: 'PRACTICAL', CREDIT: 'CREDIT' } as const
 
 const bodySchema = z.object({
   studentId: idSchema,
@@ -18,7 +18,7 @@ const bodySchema = z.object({
   value: z.number().int().min(2).max(5),
   date: dateSchema,
   comment: z.string().trim().max(500).optional(),
-  kind: z.enum(['ANSWER', 'SURVEY', 'PRACTICAL', 'LECTURE', 'TEST']).optional(),
+  kind: z.enum(['ANSWER', 'SURVEY', 'PRACTICAL', 'LECTURE', 'TEST', 'CREDIT']).optional(),
   planItemId: idSchema.nullish(),
 })
 

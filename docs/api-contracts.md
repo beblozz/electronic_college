@@ -222,6 +222,17 @@ type ConflictDetails = {
 
 В `POST /api/journal/grade` поле `kind` необязательно. Если `planItemId` не передан, сервер ищет работу КТП группы по предмету с `plannedDate`, равной дате оценки, и привязывает оценку к ней; `kind` при этом берётся из работы (`LECTURE` или `PRACTICAL`). `planItemId: null` — не привязывать. Без работы на эту дату и без `kind` оценка получает `ANSWER`.
 
+### КТП: зачёт, параллельные группы, окончание (версия 1.5)
+
+`kind` пункта КТП и оценки может быть `CREDIT` (зачёт). Пороги `admissionThreshold` и `autoCreditThreshold` считаются только по пунктам `LECTURE` и `PRACTICAL`. У прогресса студента добавлены `hasCredit`, `creditPassed` и статус `CREDITED`.
+
+| Метод и путь | Назначение | Вход | Выход | Роль |
+| --- | --- | --- | --- | --- |
+| GET /api/journal/plan/parallel | Параллельные группы для копирования КТП: тот же курс, тот же предмет, для преподавателя — только где он ведёт предмет | query `groupId`, `subjectId` | 200 `{ groups: Array<{ id, name, planItemCount }> }` | TEACHER, ADMIN |
+| POST /api/journal/plan/copy | Записать КТП в группы, заменив прежний | `{ subjectId, targetGroupIds: string[] (до 20), withDates: boolean, admissionThreshold, autoCreditThreshold, items: Array<{ kind, title }> }` | 200 `{ results: Array<{ groupId, groupName, itemCount, datedCount }> }`. При `withDates` пункты распределяются по парам предмета у каждой группы в текущем семестре. 403, если преподаватель не ведёт предмет у одной из групп | TEACHER, ADMIN |
+
+У `SubjectHours` добавлено `remainingPairs` — сколько пар осталось провести до плана.
+
 ### Доп. пары (версия 1.4)
 
 | Метод и путь | Назначение | Вход | Выход | Роль |

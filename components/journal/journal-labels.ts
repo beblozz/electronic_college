@@ -22,6 +22,7 @@ export const gradeKindLabels: Record<GradeKind, string> = {
   PRACTICAL: 'Практическая работа',
   LECTURE: 'Ответ на лекции',
   TEST: 'Контрольная работа',
+  CREDIT: 'Зачёт',
 }
 
 export const gradeKinds = Object.keys(gradeKindLabels) as GradeKind[]
@@ -29,14 +30,17 @@ export const gradeKinds = Object.keys(gradeKindLabels) as GradeKind[]
 export const planItemKindLabels: Record<PlanItemKind, string> = {
   LECTURE: 'Лекция',
   PRACTICAL: 'Практическая работа',
+  CREDIT: 'Зачёт',
 }
 
 export const gradeKindForPlanItem: Record<PlanItemKind, GradeKind> = {
   LECTURE: 'LECTURE',
   PRACTICAL: 'PRACTICAL',
+  CREDIT: 'CREDIT',
 }
 
 export const planStatusLabels: Record<PlanStatus, string> = {
+  CREDITED: 'Зачтено',
   AUTO_CREDIT: 'Автомат',
   ADMITTED: 'Допуск',
   NOT_ADMITTED: 'Нет допуска',

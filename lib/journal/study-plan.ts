@@ -46,7 +46,7 @@ export function serializeStudyPlan(plan: StudyPlanRow | null, semester: number):
     position: item.position,
     plannedDate: item.plannedDate ? formatDate(item.plannedDate) : null,
   }))
-  const total = items.length
+  const total = items.filter((item) => item.kind !== 'CREDIT').length
   return {
     id: plan?.id ?? null,
     semester,
@@ -74,10 +74,12 @@ export async function loadStudyPlan(
 type PlanGrade = { planItemId: string | null; value: number }
 
 export function planProgress(plan: StudyPlanDto, grades: PlanGrade[], today: Date): PlanProgress | null {
-  const total = plan.items.length
-  if (total === 0) {
+  if (plan.items.length === 0) {
     return null
   }
+  const works = plan.items.filter((item) => item.kind !== 'CREDIT')
+  const credits = plan.items.filter((item) => item.kind === 'CREDIT')
+  const total = works.length
   const itemIds = new Set(plan.items.map((item) => item.id))
   const completedItemIds = [
     ...new Set(
@@ -86,14 +88,22 @@ export function planProgress(plan: StudyPlanDto, grades: PlanGrade[], today: Dat
         .map((grade) => grade.planItemId as string),
     ),
   ]
-  const completed = completedItemIds.length
+  const completed = works.filter((item) => completedItemIds.includes(item.id)).length
+  const creditPassed = credits.length > 0 && credits.every((item) => completedItemIds.includes(item.id))
+  const isAutoCredit = total > 0 && completed >= plan.autoCreditThreshold
   const todayKey = formatDate(today)
   const owed = plan.items.filter(
-    (item) => item.plannedDate && item.plannedDate <= todayKey && !completedItemIds.includes(item.id),
+    (item) =>
+      item.plannedDate &&
+      item.plannedDate <= todayKey &&
+      !completedItemIds.includes(item.id) &&
+      !(item.kind === 'CREDIT' && isAutoCredit),
   ).length
 
   let status: PlanStatus = 'NOT_ADMITTED'
-  if (completed >= plan.autoCreditThreshold) {
+  if (creditPassed) {
+    status = 'CREDITED'
+  } else if (isAutoCredit) {
     status = 'AUTO_CREDIT'
   } else if (completed >= plan.admissionThreshold) {
     status = 'ADMITTED'
@@ -105,6 +115,8 @@ export function planProgress(plan: StudyPlanDto, grades: PlanGrade[], today: Dat
     admissionThreshold: plan.admissionThreshold,
     autoCreditThreshold: plan.autoCreditThreshold,
     status,
+    hasCredit: credits.length > 0,
+    creditPassed,
     completedItemIds,
   }
 }
