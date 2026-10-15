@@ -14,8 +14,7 @@ import { idSchema } from '@/lib/validation/common'
 const maxTargets = 20
 
 const bodySchema = z.object({
-  subjectId: idSchema,
-  targetGroupIds: z.array(idSchema).min(1).max(maxTargets),
+  targets: z.array(z.object({ groupId: idSchema, subjectId: idSchema })).min(1).max(maxTargets),
   withDates: z.boolean(),
   admissionThreshold: thresholdSchema,
   autoCreditThreshold: thresholdSchema,
@@ -27,24 +26,30 @@ export const POST = route(async (request) => {
   const body = await parseBody(request, bodySchema)
   assertThresholds({ ...body, items: body.items.map((item) => ({ ...item, plannedDate: null })) })
 
-  const groups = await prisma.group.findMany({ where: { id: { in: body.targetGroupIds } } })
-  if (groups.length !== new Set(body.targetGroupIds).size) {
-    throw notFound('Группа не найдена')
-  }
-  if (session.role === 'TEACHER') {
-    const teacher = await prisma.teacher.findUnique({ where: { userId: session.userId } })
-    for (const group of groups) {
-      if (!teacher || !(await teacherTeachesSubject(prisma, teacher.id, group.id, body.subjectId))) {
-        throw forbidden(`Вы не ведёте этот предмет у группы ${group.name}`)
+  const teacher =
+    session.role === 'TEACHER' ? await prisma.teacher.findUnique({ where: { userId: session.userId } }) : null
+  const resolved = []
+  for (const target of body.targets) {
+    const [group, subject] = await Promise.all([
+      prisma.group.findUnique({ where: { id: target.groupId } }),
+      prisma.subject.findUnique({ where: { id: target.subjectId } }),
+    ])
+    if (!group || !subject) {
+      throw notFound('Группа или предмет не найдены')
+    }
+    if (session.role === 'TEACHER') {
+      if (!teacher || !(await teacherTeachesSubject(prisma, teacher.id, group.id, subject.id))) {
+        throw forbidden(`Вы не ведёте «${subject.name}» у группы ${group.name}`)
       }
     }
+    resolved.push({ group, subject })
   }
 
   const results: PlanCopyResult[] = []
-  for (const group of groups) {
+  for (const { group, subject } of resolved) {
     const [semester, dates] = await Promise.all([
-      resolveSemester(prisma, group.id, body.subjectId),
-      body.withDates ? subjectLessonDates(prisma, group.id, body.subjectId) : Promise.resolve([]),
+      resolveSemester(prisma, group.id, subject.id),
+      body.withDates ? subjectLessonDates(prisma, group.id, subject.id) : Promise.resolve([]),
     ])
     const items = body.items.map((item, index) => ({
       ...item,
@@ -53,7 +58,7 @@ export const POST = route(async (request) => {
     await prisma.$transaction((transaction) =>
       savePlan(transaction, {
         groupId: group.id,
-        subjectId: body.subjectId,
+        subjectId: subject.id,
         semester,
         admissionThreshold: body.admissionThreshold,
         autoCreditThreshold: body.autoCreditThreshold,
@@ -63,6 +68,7 @@ export const POST = route(async (request) => {
     results.push({
       groupId: group.id,
       groupName: group.name,
+      subjectName: subject.name,
       itemCount: items.length,
       datedCount: items.filter((item) => item.plannedDate).length,
     })

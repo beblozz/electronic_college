@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireSession } from '@/lib/auth'
 import { forbidden, parseQuery, route } from '@/lib/http'
-import { parallelGroups } from '@/lib/journal/plan-parallel'
+import { planTransferTargets } from '@/lib/journal/plan-parallel'
 import { prisma } from '@/lib/prisma'
 import { idSchema } from '@/lib/validation/common'
 
@@ -19,6 +19,6 @@ export const GET = route(async (request) => {
     }
     teacherId = teacher.id
   }
-  const groups = await parallelGroups(prisma, query.groupId, query.subjectId, teacherId)
-  return NextResponse.json({ groups })
+  const targets = await planTransferTargets(prisma, query.groupId, query.subjectId, teacherId)
+  return NextResponse.json({ targets })
 })

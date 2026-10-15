@@ -3,7 +3,7 @@
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { planItemKindLabels } from '@/components/journal/journal-labels'
-import { PlanCopyPanel } from '@/components/journal/plan-copy-panel'
+import { PlanTransferPanel } from '@/components/journal/plan-transfer-panel'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Field, Input, Select } from '@/components/ui/field'
@@ -251,7 +251,7 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
 
       {isCopyOpen ? (
         <div className="mt-4">
-          <PlanCopyPanel
+          <PlanTransferPanel
             groupId={groupId}
             subjectId={subjectId}
             admissionThreshold={admission === '' ? null : Number(admission)}
@@ -264,7 +264,7 @@ export function PlanDialog({ groupId, subjectId, plan, onClose, onSaved }: PlanD
       <div className="mt-4 flex justify-end gap-2">
         {!isCopyOpen ? (
           <Button variant="ghost" className="mr-auto" disabled={items.length === 0} onClick={() => setIsCopyOpen(true)}>
-            Скопировать в параллельную группу
+            Перенос КТП
           </Button>
         ) : null}
         <Button onClick={onClose}>Отмена</Button>

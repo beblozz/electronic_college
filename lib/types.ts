@@ -405,6 +405,20 @@ export type AcademicYear = {
   breakDays: number | null
 }
 
-export type ParallelGroup = { id: string; name: string; planItemCount: number }
+export type PlanTransferTarget = {
+  groupId: string
+  groupName: string
+  courseYear: number
+  subjectId: string
+  subjectName: string
+  isSameSubject: boolean
+  planItemCount: number
+}
 
-export type PlanCopyResult = { groupId: string; groupName: string; itemCount: number; datedCount: number }
+export type PlanCopyResult = {
+  groupId: string
+  groupName: string
+  subjectName: string
+  itemCount: number
+  datedCount: number
+}
