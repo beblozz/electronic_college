@@ -81,6 +81,25 @@ function academicYearStart(today: Date): number {
   return today.getUTCMonth() >= 7 ? today.getUTCFullYear() : today.getUTCFullYear() - 1
 }
 
+const demoEducations = [
+  'Технический университет, информатика и вычислительная техника',
+  'Педагогический университет, математика',
+  'Государственный университет, история',
+  'Колледж связи, сетевое администрирование',
+  'Лингвистический университет, английский язык',
+]
+
+function demoStaffProfile(index: number, startYear: number) {
+  const collegeYears = 2 + ((index * 3) % 15)
+  const hasHigherEducation = index % 5 !== 3
+  return {
+    hiredAt: parseDate(`${startYear - collegeYears}-09-01`),
+    experienceStartDate: parseDate(`${startYear - collegeYears - (index % 4)}-09-01`),
+    hasHigherEducation,
+    education: demoEducations[index % demoEducations.length],
+  }
+}
+
 async function main(): Promise<void> {
   if ((await prisma.user.count()) > 0) {
     console.log('Database already contains users, seed is skipped')
@@ -166,6 +185,7 @@ async function main(): Promise<void> {
         userId: user.id,
         departmentId: departments[seed.departmentIndex].id,
         maxHoursPerWeek: 24,
+        ...demoStaffProfile(index, startYear),
         teacherSubjects: {
           create: seed.subjectCodes.map((code) => ({ subjectId: subjectIdByCode.get(code) as string })),
         },
@@ -173,6 +193,23 @@ async function main(): Promise<void> {
     })
     teachers.push({ ...teacher, subjectCodes: seed.subjectCodes })
   }
+  const retiredUser = await prisma.user.create({
+    data: { email: 'retired.teacher@example.com', firstName: 'Олег', lastName: 'Ветров', role: 'TEACHER' },
+  })
+  await prisma.teacher.create({
+    data: {
+      userId: retiredUser.id,
+      departmentId: departments[0].id,
+      status: 'FIRED',
+      hiredAt: parseDate(`${startYear - 24}-09-01`),
+      experienceStartDate: parseDate(`${startYear - 31}-09-01`),
+      hasHigherEducation: true,
+      education: 'Педагогический институт, учитель математики',
+      dismissedAt: parseDate(`${startYear}-06-30`),
+      dismissalReason: 'RETIREMENT',
+      dismissalNote: 'Приказ о прекращении трудового договора',
+    },
+  })
   await prisma.department.update({ where: { id: departments[0].id }, data: { headTeacherId: teachers[0].id } })
   await prisma.department.update({ where: { id: departments[1].id }, data: { headTeacherId: teachers[4].id } })
 

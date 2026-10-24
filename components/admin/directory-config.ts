@@ -84,15 +84,6 @@ export const resourceConfigs: ResourceConfig[] = [
       { name: 'email', label: 'Почта Google', type: 'email' },
       { name: 'departmentId', label: 'Кафедра', type: 'reference', resource: 'departments', labelKey: 'name' },
       { name: 'maxHoursPerWeek', label: 'Максимум часов в неделю', type: 'number' },
-      {
-        name: 'status',
-        label: 'Статус',
-        type: 'select',
-        options: [
-          { value: 'ACTIVE', label: 'Работает' },
-          { value: 'FIRED', label: 'Уволен' },
-        ],
-      },
     ],
   },
   {

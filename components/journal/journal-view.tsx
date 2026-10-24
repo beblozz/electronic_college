@@ -188,7 +188,7 @@ export function JournalView({ groupId, subjectId }: { groupId: string; subjectId
                           type="button"
                           onClick={() => setAttendanceColumn(column)}
                           title={[
-                            `Отметить посещаемость. Ведёт: ${column.lesson.teacher.fullName}`,
+                            `Посещаемость и оценки за пару. Ведёт: ${column.lesson.teacher.fullName}`,
                             column.planItem ? `По КТП: ${column.planItem.title}` : '',
                           ]
                             .filter(Boolean)
@@ -307,7 +307,13 @@ export function JournalView({ groupId, subjectId }: { groupId: string; subjectId
         />
       ) : null}
       {attendanceColumn?.lesson && data ? (
-        <AttendanceDialog lesson={attendanceColumn.lesson} students={data.students} onClose={closeDialogs} />
+        <AttendanceDialog
+          lesson={attendanceColumn.lesson}
+          students={data.students}
+          subjectId={subjectId}
+          plan={data.plan}
+          onClose={closeDialogs}
+        />
       ) : null}
       {isPlanOpen && data ? (
         <PlanDialog groupId={groupId} subjectId={subjectId} plan={data.plan} onClose={() => setIsPlanOpen(false)} onSaved={closeDialogs} />

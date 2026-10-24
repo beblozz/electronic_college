@@ -27,6 +27,15 @@ enum TeacherStatus {
   FIRED
 }
 
+enum DismissalReason {
+  RETIREMENT
+  OWN_WISH
+  DISMISSED
+  DEATH
+  TRANSFER
+  OTHER
+}
+
 enum WeekType {
   ODD
   EVEN
@@ -128,6 +137,13 @@ model Teacher {
   departmentId    String
   status          TeacherStatus @default(ACTIVE)
   maxHoursPerWeek Int           @default(36)
+  hiredAt             DateTime?        @db.Date
+  experienceStartDate DateTime?        @db.Date
+  hasHigherEducation  Boolean          @default(false)
+  education           String?          @db.VarChar(300)
+  dismissedAt         DateTime?        @db.Date
+  dismissalReason     DismissalReason?
+  dismissalNote       String?          @db.VarChar(300)
 
   user                    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   department              Department       @relation("DepartmentTeachers", fields: [departmentId], references: [id], onDelete: Restrict)
