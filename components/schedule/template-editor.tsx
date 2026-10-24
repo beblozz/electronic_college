@@ -1,10 +1,12 @@
 'use client'
 
-import { Plus } from 'lucide-react'
+import { Copy, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { text, useDirectory } from '@/components/admin/use-directory'
+import { GridCopyDialog } from '@/components/schedule/grid-copy-dialog'
 import { SlotDialog, SlotDraft } from '@/components/schedule/slot-dialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Field, Select } from '@/components/ui/field'
 import { ErrorState } from '@/components/ui/states'
 import { useApi } from '@/lib/client/api'
@@ -13,7 +15,7 @@ import { pairTimes } from '@/lib/schedule/pair-times'
 import type { ScheduleSlotView } from '@/lib/types'
 
 const editableDays = [1, 2, 3, 4, 5, 6]
-const semesterOptions = Array.from({ length: 8 }, (_, index) => index + 1)
+const semesterNumbers = Array.from({ length: 8 }, (_, index) => index + 1)
 
 export function TemplateEditor() {
   const groups = useDirectory('groups')
@@ -23,19 +25,38 @@ export function TemplateEditor() {
   const [groupId, setGroupId] = useState('')
   const [semester, setSemester] = useState(1)
   const [draft, setDraft] = useState<SlotDraft | null>(null)
+  const [isCopyOpen, setIsCopyOpen] = useState(false)
 
   const curricula = useDirectory(groupId ? 'curricula' : null, `&groupId=${groupId}&semester=${semester}`)
   const slots = useApi<{ slots: ScheduleSlotView[] }>(
     groupId ? `/api/schedule/slots?groupId=${groupId}&semester=${semester}` : null,
   )
 
+  const today = todayLocal()
+  const currentTerm = terms.find((term) => text(term, 'startDate') <= today && text(term, 'endDate') >= today)
+  const currentHalf = Number(text(currentTerm, 'half') || 1)
+  const semesterOf = (nextGroupId: string) => {
+    const group = groups.find((item) => item.id === nextGroupId)
+    return (Number(text(group, 'courseYear') || 1) - 1) * 2 + currentHalf
+  }
+  const currentSemester = groupId ? semesterOf(groupId) : 1
+  const semesterOptions = semesterNumbers.map((value) => ({
+    value,
+    label:
+      value === currentSemester
+        ? `${value} — текущий`
+        : value === currentSemester + 1
+          ? `${value} — следующий`
+          : String(value),
+  }))
+  const groupName = text(
+    groups.find((item) => item.id === groupId),
+    'name',
+  )
+
   const selectGroup = (nextGroupId: string) => {
     setGroupId(nextGroupId)
-    const group = groups.find((item) => item.id === nextGroupId)
-    const today = todayLocal()
-    const currentTerm = terms.find((term) => text(term, 'startDate') <= today && text(term, 'endDate') >= today)
-    const termHalf = Number(text(currentTerm, 'half') || 1)
-    setSemester((Number(text(group, 'courseYear') || 1) - 1) * 2 + termHalf)
+    setSemester(semesterOf(nextGroupId))
   }
 
   useEffect(() => {
@@ -59,17 +80,28 @@ export function TemplateEditor() {
             ))}
           </Select>
         </Field>
-        <Field label="Семестр" className="w-28">
+        <Field label="Семестр" className="w-44">
           <Select value={semester} onChange={(event) => setSemester(Number(event.target.value))}>
             {semesterOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </Select>
         </Field>
+        <Button disabled={!groupId || (slots.data?.slots.length ?? 0) === 0} onClick={() => setIsCopyOpen(true)}>
+          <Copy size={16} strokeWidth={1.5} />
+          Скопировать сетку в другой семестр
+        </Button>
         <p className="pb-1.5 text-caption text-muted">Нажмите на пару, чтобы изменить её, или на плюс, чтобы добавить.</p>
       </div>
+
+      {semester > currentSemester && slots.data && slots.data.slots.length === 0 ? (
+        <p className="mb-3 rounded border border-line bg-subtle px-3 py-2 text-muted">
+          Сетки на {semester} семестр пока нет. Откройте текущий семестр и нажмите «Скопировать сетку в другой
+          семестр» или добавляйте пары по одной. Пары появятся в расписании, когда начнётся этот семестр.
+        </p>
+      ) : null}
 
       {slots.error ? <ErrorState message={slots.error} /> : null}
 
@@ -130,6 +162,20 @@ export function TemplateEditor() {
           </tbody>
         </table>
       </div>
+
+      {isCopyOpen ? (
+        <GridCopyDialog
+          groupId={groupId}
+          groupName={groupName}
+          fromSemester={semester}
+          semesterOptions={semesterOptions}
+          onClose={() => setIsCopyOpen(false)}
+          onCopied={(toSemester) => {
+            setIsCopyOpen(false)
+            setSemester(toSemester)
+          }}
+        />
+      ) : null}
 
       {draft ? (
         <SlotDialog

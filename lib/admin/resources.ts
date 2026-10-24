@@ -203,7 +203,6 @@ const personSchema = z.object({ email: emailSchema, firstName: z.string().trim()
 const teacherSchema = personSchema.extend({
   departmentId: idSchema,
   maxHoursPerWeek: z.coerce.number().int().min(2).max(80),
-  status: z.enum(['ACTIVE', 'FIRED']).default('ACTIVE'),
 })
 
 const teacherInclude = { user: true, department: true, teacherSubjects: true } as const

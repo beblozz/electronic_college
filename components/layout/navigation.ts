@@ -19,6 +19,7 @@ import {
   MessagesSquare,
   Repeat,
   Settings,
+  Users,
 } from 'lucide-react'
 import type { Role } from '@/lib/types'
 
@@ -56,6 +57,7 @@ const itemsByRole: Record<Role, NavigationItem[]> = {
     { label: 'Вычитка часов', href: '/admin/hours', icon: Hourglass },
     { label: 'Журнал', href: '/admin/journal', icon: ClipboardList },
     { label: 'Учебный год', href: '/admin/academic-year', icon: CalendarRange },
+    { label: 'Преподаватели', href: '/admin/staff', icon: Users },
     { label: 'Справочники', href: '/admin/directory', icon: Database },
     { label: 'Документы', href: '/admin/documents', icon: FileText },
   ],

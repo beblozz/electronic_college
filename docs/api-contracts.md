@@ -222,6 +222,25 @@ type ConflictDetails = {
 
 В `POST /api/journal/grade` поле `kind` необязательно. Если `planItemId` не передан, сервер ищет работу КТП группы по предмету с `plannedDate`, равной дате оценки, и привязывает оценку к ней; `kind` при этом берётся из работы (`LECTURE` или `PRACTICAL`). `planItemId: null` — не привязывать. Без работы на эту дату и без `kind` оценка получает `ANSWER`.
 
+### Преподаватели и архив (версия 1.6)
+
+| Метод и путь | Назначение | Вход | Выход | Роль |
+| --- | --- | --- | --- | --- |
+| GET /api/admin/staff | Работающие преподаватели или архив | query `archive=0\|1` | 200 `{ staff: StaffMember[] }` | ADMIN |
+| PATCH /api/admin/staff/:id | Кадровые данные | `{ hiredAt: string \| null, experienceStartDate: string \| null, hasHigherEducation: boolean, education: string \| null }` | 200 `{ member }`. 400, если стаж начинается позже приёма или дата в будущем | ADMIN |
+| POST /api/admin/staff/:id/dismiss | Перевести в архив | `{ date, reason: 'RETIREMENT' \| 'OWN_WISH' \| 'DISMISSED' \| 'DEATH' \| 'TRANSFER' \| 'OTHER', note? }` | 200 `{ member }`, статус `FIRED` | ADMIN |
+| POST /api/admin/staff/:id/restore | Восстановить из архива | — | 200 `{ member }`, статус `ACTIVE` | ADMIN |
+
+`StaffMember` — `{ id, fullName, email, departmentName, status, hiredAt, experienceStartDate, hasHigherEducation, education, experience: { years, months } \| null, collegeExperience, dismissedAt, dismissalReason, dismissalNote, gridSlotCount, curriculumCount, curatedGroupNames }`. Стаж считается до сегодняшнего дня или до даты увольнения; без даты начала стажа — от даты приёма.
+
+Вход преподавателя со статусом `FIRED` возвращает 403 `ACCOUNT_ARCHIVED`, `GET /api/auth/me` — 401. Поле `status` убрано из формы преподавателя в справочнике.
+
+### Сетка на другой семестр (версия 1.6)
+
+| Метод и путь | Назначение | Вход | Выход | Роль |
+| --- | --- | --- | --- | --- |
+| POST /api/schedule/slots/copy | Скопировать сетку группы в другой семестр | `{ groupId, fromSemester, toSemester, includeCurriculum: boolean }` | 200 `{ created, curriculaCreated, skipped: string[] }`. Пары предметов, которых нет в учебном плане целевого семестра, и пары с конфликтами пропускаются | ADMIN |
+
 ### КТП: зачёт, перенос, окончание (версия 1.5)
 
 `kind` пункта КТП и оценки может быть `CREDIT` (зачёт). Пороги `admissionThreshold` и `autoCreditThreshold` считаются только по пунктам `LECTURE` и `PRACTICAL`. У прогресса студента добавлены `hasCredit`, `creditPassed` и статус `CREDITED`.

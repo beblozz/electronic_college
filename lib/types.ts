@@ -422,3 +422,27 @@ export type PlanCopyResult = {
   itemCount: number
   datedCount: number
 }
+
+export type GridCopyResult = { created: number; curriculaCreated: number; skipped: string[] }
+
+export type DismissalReason = 'RETIREMENT' | 'OWN_WISH' | 'DISMISSED' | 'DEATH' | 'TRANSFER' | 'OTHER'
+
+export type StaffMember = {
+  id: string
+  fullName: string
+  email: string
+  departmentName: string
+  status: 'ACTIVE' | 'SICK' | 'VACATION' | 'FIRED'
+  hiredAt: string | null
+  experienceStartDate: string | null
+  hasHigherEducation: boolean
+  education: string | null
+  experience: { years: number; months: number } | null
+  collegeExperience: { years: number; months: number } | null
+  dismissedAt: string | null
+  dismissalReason: DismissalReason | null
+  dismissalNote: string | null
+  gridSlotCount: number
+  curriculumCount: number
+  curatedGroupNames: string[]
+}

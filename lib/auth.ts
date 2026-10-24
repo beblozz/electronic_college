@@ -1,7 +1,7 @@
 import type { Student, Teacher } from '@prisma/client'
 import { cookies } from 'next/headers'
 import type { NextResponse } from 'next/server'
-import { forbidden, unauthenticated } from '@/lib/http'
+import { ApiError, forbidden, unauthenticated } from '@/lib/http'
 import { prisma } from '@/lib/prisma'
 import {
   Session,
@@ -43,10 +43,25 @@ export async function requireTeacher(): Promise<{ session: Session; teacher: Tea
   if (!teacher) {
     throw forbidden('Профиль преподавателя не найден')
   }
+  if (teacher.status === 'FIRED') {
+    throw archivedAccount()
+  }
   return { session, teacher }
 }
 
+function archivedAccount(): ApiError {
+  return new ApiError(403, 'ACCOUNT_ARCHIVED', 'Учётная запись в архиве. Обратитесь в учебную часть')
+}
+
+export async function isArchivedUser(userId: string): Promise<boolean> {
+  const teacher = await prisma.teacher.findUnique({ where: { userId }, select: { status: true } })
+  return teacher?.status === 'FIRED'
+}
+
 export async function attachSessionCookie(response: NextResponse, session: Session): Promise<void> {
+  if (await isArchivedUser(session.userId)) {
+    throw archivedAccount()
+  }
   response.cookies.set(sessionCookieName, await signSessionToken(session), {
     httpOnly: true,
     sameSite: 'lax',
